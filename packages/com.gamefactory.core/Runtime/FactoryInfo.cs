@@ -4,6 +4,6 @@ namespace GameFactory.Core
     public static class FactoryInfo
     {
         /// <summary>Debe coincidir con "version" en package.json.</summary>
-        public const string CoreVersion = "0.1.0";
+        public const string CoreVersion = "0.1.1";
     }
 }

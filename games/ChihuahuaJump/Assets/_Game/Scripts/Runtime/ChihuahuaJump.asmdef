@@ -1,7 +1,11 @@
 {
     "name": "ChihuahuaJump",
     "rootNamespace": "ChihuahuaJump",
-    "references": [ "GameFactory.Core" ],
+    "references": [
+        "GameFactory.Core",
+        "ChihuahuaJump.Logic",
+        "Unity.InputSystem"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

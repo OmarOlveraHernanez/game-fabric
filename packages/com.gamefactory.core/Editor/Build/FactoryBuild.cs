@@ -17,6 +17,7 @@ namespace GameFactory.Core.Editor
         public string companyName;
         public string version;
         public int versionCode;
+        public string orientation; // "landscape" (defecto) o "portrait"
     }
 
     /// <summary>
@@ -49,7 +50,18 @@ namespace GameFactory.Core.Editor
             PlayerSettings.bundleVersion = cfg.version;
             PlayerSettings.Android.bundleVersionCode = Math.Max(1, cfg.versionCode);
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
+            ApplyOrientation(cfg.orientation);
             AssetDatabase.SaveAssets();
+        }
+
+        static void ApplyOrientation(string orientation)
+        {
+            bool portrait = string.Equals(orientation, "portrait", StringComparison.OrdinalIgnoreCase);
+            PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
+            PlayerSettings.allowedAutorotateToPortrait = portrait;
+            PlayerSettings.allowedAutorotateToPortraitUpsideDown = portrait;
+            PlayerSettings.allowedAutorotateToLandscapeLeft = !portrait;
+            PlayerSettings.allowedAutorotateToLandscapeRight = !portrait;
         }
 
         [MenuItem("Game Factory/Aplicar factory.json")]

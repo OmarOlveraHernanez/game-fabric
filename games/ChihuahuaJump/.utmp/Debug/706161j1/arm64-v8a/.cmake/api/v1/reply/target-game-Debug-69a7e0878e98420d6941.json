@@ -78,7 +78,7 @@
 				{
 					"backtrace" : 2,
 					"isSystem" : true,
-					"path" : "C:/Users/tryto/.gradle/caches/9.3.1/transforms/0cd2b774598c99c2e25cb70828d5fb95/workspace/transformed/jetified-games-activity-4.4.0/prefab/modules/game-activity_static/include"
+					"path" : "D:/unity/Cache/gradle/caches/9.3.1/transforms/0cd2b774598c99c2e25cb70828d5fb95/workspace/transformed/jetified-games-activity-4.4.0/prefab/modules/game-activity_static/include"
 				}
 			],
 			"language" : "CXX",
@@ -115,7 +115,7 @@
 			},
 			{
 				"backtrace" : 2,
-				"fragment" : "C:\\Users\\tryto\\.gradle\\caches\\9.3.1\\transforms\\0cd2b774598c99c2e25cb70828d5fb95\\workspace\\transformed\\jetified-games-activity-4.4.0\\prefab\\modules\\game-activity_static\\libs\\android.arm64-v8a\\libgame-activity_static.a",
+				"fragment" : "D:\\unity\\Cache\\gradle\\caches\\9.3.1\\transforms\\0cd2b774598c99c2e25cb70828d5fb95\\workspace\\transformed\\jetified-games-activity-4.4.0\\prefab\\modules\\game-activity_static\\libs\\android.arm64-v8a\\libgame-activity_static.a",
 				"role" : "libraries"
 			},
 			{
