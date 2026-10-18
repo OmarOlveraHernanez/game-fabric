@@ -16,4 +16,5 @@ Juego vertical de trampolín con vibra prehispánica: el chihuahua rebota solo y
 - Controles en editor: arrastrar con el ratón, o A/D / flechas; espacio para empezar.
 
 ## Estado
-- F1 (prototipo de trampolín con formas): en validación. v0.4 tras feedback (seguir dedo, rebote más alto, cacao flotante). Bot experto: 98% supera 45 s, mediana ~105 s.
+- F1 ✅ (2026-10-18): prototipo de trampolín v0.4 validado por el usuario ("se me hizo más fácil", le gusta la idea). Bot experto: 98% supera 45 s, mediana ~105 s.
+- Siguiente: F2 · extraer al Core (Save, Audio, Input) con récord y cacao persistentes.

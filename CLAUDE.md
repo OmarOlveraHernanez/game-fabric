@@ -31,5 +31,5 @@ powershell -ExecutionPolicy Bypass -File tools\setup-emulator.ps1 -Start        
 Los scripts en modo batch **fallan si el proyecto está abierto en el editor de Unity**: pedir al usuario que lo cierre.
 
 ## Fase actual
-F0 completada (2026-10-17): APK hola mundo corre en el emulador.
-Siguiente: **F1 · Prototipo jugable** de Chihuahua Jump (ver roadmap en `docs/ARCHITECTURE.md`).
+F0 ✅ (2026-10-17) · F1 ✅ (2026-10-18): prototipo de trampolín validado.
+Siguiente: **F2 · Extracción al Core** (Save, Audio, Input) — ver roadmap en `docs/ARCHITECTURE.md`.
