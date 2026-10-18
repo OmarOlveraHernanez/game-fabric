@@ -1,0 +1,8 @@
+{
+  "name": "com.gamefactory.core",
+  "version": "0.1.0",
+  "displayName": "Game Factory Core",
+  "description": "Nucleo compartido para juegos 2D Android de Game Factory.",
+  "unity": "6000.3",
+  "author": { "name": "Omar Olvera Hernandez" }
+}

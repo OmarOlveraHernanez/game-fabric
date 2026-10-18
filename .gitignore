@@ -1,0 +1,54 @@
+# ===== Unity (por proyecto en games/*) =====
+games/*/[Ll]ibrary/
+games/*/[Tt]emp/
+games/*/[Oo]bj/
+games/*/[Bb]uild/
+games/*/[Bb]uilds/
+games/*/[Ll]ogs/
+games/*/[Uu]ser[Ss]ettings/
+games/*/[Mm]emoryCaptures/
+games/*/[Rr]ecordings/
+games/*/Assets/AssetStoreTools*
+games/*/Assets/Plugins/Editor/JetBrains*
+*.csproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+sysinfo.txt
+crashlytics-build.properties
+
+# ===== Editores =====
+.vs/
+.vscode/
+.idea/
+
+# ===== Salidas de build =====
+/builds/
+*.apk
+*.aab
+*.apks
+*.symbols.zip
+
+# ===== Secretos (NUNCA al repo) =====
+*.keystore
+*.jks
+keystore.properties
+*.env
+secrets/
+
+# ===== Claude Code local =====
+.claude/settings.local.json
+
+# ===== SO =====
+.DS_Store
+Thumbs.db
+desktop.ini

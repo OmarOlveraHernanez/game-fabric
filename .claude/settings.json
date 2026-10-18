@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(git push)",
+      "PowerShell(git push:*)",
+      "PowerShell(git push)",
+      "Bash(git config core.hooksPath:*)",
+      "PowerShell(git config core.hooksPath:*)",
+      "Read(**/*.keystore)",
+      "Read(**/*.jks)",
+      "Read(**/keystore.properties)"
+    ],
+    "ask": [
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset --hard:*)",
+      "PowerShell(git merge:*)",
+      "PowerShell(git rebase:*)",
+      "PowerShell(git reset --hard:*)"
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_GIT_BASH_PATH": "C:\\Program Files\\Git\\bin\\bash.exe"
+  }
+}

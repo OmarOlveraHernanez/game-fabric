@@ -1,0 +1,12 @@
+# ninja log v5
+386	1470	8139940358731009	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	a0bcc454436f6b57
+1472	1705	8139940360802495	D:/game-fabric/games/ChihuahuaJump/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/Debug/706161j1/obj/arm64-v8a/libswappywrapper.so	bd6cbf34ae3949a7
+141	3898	8139940382903165	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	d5ffff92482b562
+191	3910	8139940383021254	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	8512859406c9e3e3
+25	3949	8139940383467933	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	310a4337a9f4a0f9
+262	3957	8139940383508403	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	9d00863042a3c63e
+68	3986	8139940383827637	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	b00eac5f17da43fd
+91	4116	8139940385117094	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	820143b585dfc62b
+315	4143	8139940385388833	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	fb58f4b80179e8e4
+1	4170	8139940385608730	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	d60fd1fc4dfa3bad
+4171	4880	8139940392761075	D:/game-fabric/games/ChihuahuaJump/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/Debug/706161j1/obj/arm64-v8a/libgame.so	bb65e4a9437e44e4
