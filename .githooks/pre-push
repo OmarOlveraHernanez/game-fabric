@@ -8,7 +8,7 @@ echo "=== Game Factory: validacion antes de push ==="
 # 1) Pruebas automaticas (si ya existen)
 if [ -f tools/test.ps1 ]; then
   echo "Ejecutando pruebas EditMode..."
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/test.ps1 -Quiet
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/test.ps1 -All -Quiet
   if [ $? -ne 0 ]; then
     echo "Pruebas fallidas: push bloqueado."
     exit 1

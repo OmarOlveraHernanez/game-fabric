@@ -52,3 +52,7 @@ secrets/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ===== Temporales locales de juegos =====
+games/*/.utmp/
+games/*/_to_delete/

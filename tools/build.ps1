@@ -1,7 +1,7 @@
 # Genera el APK de desarrollo (Dev) o el AAB firmado de lanzamiento (Release).
-# Uso: powershell -ExecutionPolicy Bypass -File tools\build.ps1 -Game ChihuahuaJump -Mode Dev
+# Uso: powershell -ExecutionPolicy Bypass -File tools\build.ps1 [-Game RescatePapi] [-Mode Dev|Release]
 param(
-    [string]$Game = "ChihuahuaJump",
+    [string]$Game = "RescatePapi",
     [ValidateSet("Dev", "Release")][string]$Mode = "Dev"
 )
 . "$PSScriptRoot\_common.ps1"

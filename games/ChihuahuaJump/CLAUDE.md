@@ -1,4 +1,6 @@
-# Chihuahua Jump
+# Chihuahua Jump · JUEGO DE PRUEBA (en pausa)
+
+> El juego principal es **Rescate Papi** (`games/RescatePapi`). Este proyecto se mantiene como segundo consumidor del Core para validar la fábrica; no se desarrolla contenido nuevo aquí por ahora.
 
 Juego vertical de trampolín con vibra prehispánica: el chihuahua rebota solo y **el jugador mueve al dueño con un trampolín** (el trampolín sigue el dedo). Dónde cae en el trampolín decide hacia dónde rebota. Serpientes, jaguares y águilas caen desde arriba (con aviso ⚠). El perro atrapa cacao (moneda) y pollitos (escudo). Pierdes si cae al fondo o lo toca un enemigo. **Diseño completo en `GDD.md`.**
 
@@ -17,4 +19,4 @@ Juego vertical de trampolín con vibra prehispánica: el chihuahua rebota solo y
 
 ## Estado
 - F1 ✅ (2026-10-18): prototipo de trampolín v0.4 validado por el usuario ("se me hizo más fácil", le gusta la idea). Bot experto: 98% supera 45 s, mediana ~105 s.
-- Siguiente: F2 · extraer al Core (Save, Audio, Input) con récord y cacao persistentes.
+- En pausa como juego de prueba. Debe seguir compilando y pasando sus pruebas cuando cambie el Core.

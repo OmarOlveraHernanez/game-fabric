@@ -6,8 +6,11 @@ Idioma: documentación y mensajes en **español**; identificadores de código en
 ## Estructura
 - `packages/com.gamefactory.core/` → **Game Factory Core** (paquete UPM local, compartido).
 - `games/<Juego>/` → un proyecto Unity por juego; referencia el Core con `file:../../../packages/com.gamefactory.core`.
+  - **`games/RescatePapi/` → JUEGO PRINCIPAL** (runner horizontal; el que se desarrolla y publica).
+  - `games/ChihuahuaJump/` → juego de prueba de la fábrica (trampolín vertical), en pausa.
+- `templates/android-2d/` → plantilla base. Juegos nuevos: `tools\new-game.ps1 -Name MiJuego -Title "Mi Juego" -Orientation landscape|portrait`.
 - `games/<Juego>/factory.json` → identidad del juego (appId, nombre, versión). El build lo aplica a PlayerSettings.
-- `tools/` → scripts PowerShell: `build.ps1`, `install-apk.ps1`, `test.ps1`, `check-env.ps1`, `setup-emulator.ps1`.
+- `tools/` → scripts PowerShell: `new-game.ps1`, `build.ps1`, `install-apk.ps1`, `test.ps1` (`-All` prueba todos los juegos), `check-env.ps1`, `setup-emulator.ps1`. Por defecto usan `-Game RescatePapi`.
 - `docs/` → arquitectura, setup, checklist de lanzamiento, decisiones (`docs/decisions/`).
 
 ## Reglas obligatorias
@@ -23,13 +26,14 @@ Idioma: documentación y mensajes en **español**; identificadores de código en
 
 ## Comandos (PowerShell, desde la raíz)
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\test.ps1 -Game ChihuahuaJump          # pruebas EditMode
-powershell -ExecutionPolicy Bypass -File tools\build.ps1 -Game ChihuahuaJump -Mode Dev # APK de desarrollo
-powershell -ExecutionPolicy Bypass -File tools\install-apk.ps1 -Game ChihuahuaJump    # instala y abre en emulador/teléfono
+powershell -ExecutionPolicy Bypass -File tools\test.ps1 [-Game RescatePapi | -All]   # pruebas EditMode
+powershell -ExecutionPolicy Bypass -File tools\build.ps1 [-Game RescatePapi] -Mode Dev # APK de desarrollo
+powershell -ExecutionPolicy Bypass -File tools\install-apk.ps1 [-Game RescatePapi]    # instala y abre en emulador/teléfono
+powershell -ExecutionPolicy Bypass -File tools\new-game.ps1 -Name MiJuego -Title "Mi Juego" -Orientation landscape  # juego nuevo
 powershell -ExecutionPolicy Bypass -File tools\setup-emulator.ps1 -Start              # abre el emulador
 ```
-Los scripts en modo batch **fallan si el proyecto está abierto en el editor de Unity**: pedir al usuario que lo cierre.
+Los scripts en modo batch **fallan si el proyecto está abierto en Unity o si VS Code tiene tomada la caché** (`EPERM`): pedir al usuario que cierre ambos. Dos juegos distintos sí pueden estar abiertos a la vez.
 
 ## Fase actual
-F0 ✅ (2026-10-17) · F1 ✅ (2026-10-18): prototipo de trampolín validado.
-Siguiente: **F2 · Extracción al Core** (Save, Audio, Input) — ver roadmap en `docs/ARCHITECTURE.md`.
+F0 ✅ · F1 ✅ (prototipo de trampolín en ChihuahuaJump) · Plantilla + `new-game.ps1` creados (2026-10-18).
+**Juego principal: Rescate Papi.** Siguiente: validar Rescate Papi generado con la plantilla y luego **F2 · Extracción al Core** (Save, Audio, Input) usada por ambos juegos.

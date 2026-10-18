@@ -44,10 +44,26 @@ function Get-Adb([string]$EditorDir) {
 }
 
 function Assert-UnityClosed([string]$Project) {
-    $full = (Resolve-Path $Project).Path.TrimEnd('\')
+    $norm = { param($x) ($x -replace '/', '\').TrimEnd('\').ToLower() }
+    $full = & $norm (Resolve-Path $Project).Path
     $open = Get-CimInstance Win32_Process -Filter "Name='Unity.exe'" -ErrorAction SilentlyContinue |
-        Where-Object { $_.CommandLine -and $_.CommandLine.ToLower().Contains($full.ToLower()) }
+        Where-Object { $_.CommandLine -and (& $norm $_.CommandLine).Contains($full) }
     if ($open) { Fail "El proyecto esta abierto en el editor de Unity. Cierralo y vuelve a intentar." }
+    if (Test-Path (Join-Path $Project "Temp\UnityLockfile")) {
+        try { $fs = [System.IO.File]::Open((Join-Path $Project "Temp\UnityLockfile"), 'Open', 'ReadWrite', 'None'); $fs.Close() }
+        catch { Fail "Unity tiene el proyecto bloqueado (Temp\UnityLockfile). Cierra Unity por completo y reintenta." }
+    }
+    # Con el editor cerrado, Unity a veces deja procesos auxiliares que bloquean Library\PackageCache
+    if (-not (Get-Process Unity -ErrorAction SilentlyContinue)) {
+        $leftovers = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'Unity.ILPP*' -or $_.ProcessName -like 'bee_backend*' -or $_.ProcessName -like 'UnityShaderCompiler*' }
+        if ($leftovers) {
+            Write-Host "   Cerrando procesos auxiliares de Unity que quedaron abiertos: $(($leftovers.ProcessName | Select-Object -Unique) -join ', ')"
+            $leftovers | Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 1
+        }
+    }
+    $code = Get-Process Code -ErrorAction SilentlyContinue
+    if ($code) { Write-Host "[AVISO] VS Code esta abierto: si falla con 'EPERM' o 'operation not permitted', cierralo y reintenta." -ForegroundColor Yellow }
 }
 
 # Ejecuta Unity en modo batch y espera; devuelve el codigo de salida

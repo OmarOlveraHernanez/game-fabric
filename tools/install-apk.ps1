@@ -1,6 +1,6 @@
 # Instala el APK de desarrollo mas reciente en el emulador/telefono conectado y lo abre.
-# Uso: powershell -ExecutionPolicy Bypass -File tools\install-apk.ps1 -Game ChihuahuaJump
-param([string]$Game = "ChihuahuaJump")
+# Uso: powershell -ExecutionPolicy Bypass -File tools\install-apk.ps1 [-Game RescatePapi]
+param([string]$Game = "RescatePapi")
 . "$PSScriptRoot\_common.ps1"
 
 $proj = Get-GameProject $Game

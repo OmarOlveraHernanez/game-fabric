@@ -1,6 +1,7 @@
 # Game Factory · Arquitectura (aprobada 2026-10-17)
 
-Fábrica de videojuegos 2D **solo Android** con Unity + C#, operada por una persona con apoyo de Claude Code. Primer juego: **Chihuahua Jump**.
+Fábrica de videojuegos 2D **solo Android** con Unity + C#, operada por una persona con apoyo de Claude Code.
+**Juego principal: Rescate Papi** (runner horizontal). **Juego de prueba: Chihuahua Jump** (trampolín vertical, en pausa).
 
 ## 1. Principio rector
 **El Core se extrae, no se diseña por adelantado.** Primero se construye el juego; el código pasa al Core solo cuando ya funciona y es claramente genérico. La fábrica se valida con el **juego 2**: debe quedar jugable en menos de 1 día sin tocar el Core.
@@ -76,4 +77,4 @@ Prueba cerrada de Play (≈12 testers × 14 días, cuentas personales nuevas) ·
 | F4 Anuncios | AdMob en IDs de prueba, consentimiento, frecuencia. **Desde aquí el teléfono real es obligatorio** | Rewarded e interstitial funcionan en teléfono real |
 | F5 Automatización | test.ps1, build.ps1, comandos de Claude, hook pre-push, checklist | Claude prueba y genera el AAB solo |
 | F6 Publicación | Prueba interna → cerrada (14 días) → producción | En producción |
-| F7 Validar fábrica | Plantilla + `/new-game`, prototipo del juego 2 | Juego 2 jugable en menos de 1 día |
+| F7 Validar fábrica (adelantada) | `templates/android-2d` + `tools/new-game.ps1`; Rescate Papi generado con la plantilla | Juego 2 jugable en menos de 1 día |

@@ -1,0 +1,8 @@
+{
+  "appId": "__APPID__",
+  "productName": "__TITLE__",
+  "companyName": "__COMPANY__",
+  "version": "0.1.0",
+  "versionCode": 1,
+  "orientation": "__ORIENTATION__"
+}

@@ -1,0 +1,14 @@
+{
+    "name": "RescatePapi",
+    "rootNamespace": "RescatePapi",
+    "references": [
+        "GameFactory.Core",
+        "RescatePapi.Logic",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

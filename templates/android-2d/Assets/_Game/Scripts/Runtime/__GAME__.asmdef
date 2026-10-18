@@ -1,0 +1,14 @@
+{
+    "name": "__GAME__",
+    "rootNamespace": "__GAME__",
+    "references": [
+        "GameFactory.Core",
+        "__GAME__.Logic",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "autoReferenced": true,
+    "noEngineReferences": false
+}
