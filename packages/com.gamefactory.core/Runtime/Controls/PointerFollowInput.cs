@@ -1,14 +1,14 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace ChihuahuaJump
+namespace GameFactory.Core.Controls
 {
     /// <summary>
-    /// Controles: el trampolin sigue al dedo (o al raton con el boton presionado).
-    /// En el editor tambien: A/D o flechas; espacio para empezar.
-    /// Candidato a moverse al Core en F2 (modulo Input).
+    /// Control "seguir el dedo": devuelve la X del mundo a la que apunta el dedo (o el raton con el boton
+    /// presionado). En el editor tambien A/D o flechas como direccion, y espacio/enter como toque.
+    /// Llamar Poll() una vez por frame antes de leer.
     /// </summary>
-    public sealed class InputReader
+    public sealed class PointerFollowInput
     {
         readonly Camera _cam;
 
@@ -16,10 +16,10 @@ namespace ChihuahuaJump
         public float? TargetX { get; private set; }
         /// <summary>-1 izquierda, 0 nada, +1 derecha (solo teclado).</summary>
         public int Direction { get; private set; }
-        /// <summary>Se toco/pulso en este frame (para empezar o reiniciar).</summary>
+        /// <summary>Se toco/pulso en este frame.</summary>
         public bool Tapped { get; private set; }
 
-        public InputReader(Camera cam) { _cam = cam; }
+        public PointerFollowInput(Camera cam) { _cam = cam; }
 
         public void Poll()
         {

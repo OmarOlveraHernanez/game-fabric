@@ -32,6 +32,7 @@ $secs = [int]((Get-Date) - $t).TotalSeconds
 if ($code -ne 0 -or -not (Test-Path $out)) {
     Write-Host "`n--- Ultimas lineas relevantes del log ---" -ForegroundColor Yellow
     if (Test-Path $log) { Select-String -Path $log -Pattern "error|exception|GameFactory|failed" -CaseSensitive:$false | Select-Object -Last 25 | ForEach-Object { $_.Line } }
+    Explain-UnityLog $log
     Fail "Build fallido (codigo $code, ${secs}s). Revisa $log"
 }
 $mb = [math]::Round((Get-Item $out).Length / 1MB, 1)

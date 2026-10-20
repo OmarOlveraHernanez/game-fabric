@@ -1,4 +1,7 @@
 using System.Collections.Generic;
+using GameFactory.Core.Audio;
+using GameFactory.Core.Controls;
+using GameFactory.Core.Save;
 using RescatePapi.Logic;
 using UnityEngine;
 
@@ -21,7 +24,11 @@ namespace RescatePapi
         static readonly Color PollitoColor = new Color(1.00f, 0.90f, 0.20f);
 
         RunnerSimulation _sim;
-        readonly InputReader _input = new InputReader();
+        readonly TapHoldInput _input = new TapHoldInput();
+        SaveFile<GameData> _saveFile;
+        GameData _data;
+        GameSounds _sounds;
+        bool _newRecord;
         readonly List<SpriteRenderer> _hazardViews = new List<SpriteRenderer>();
         readonly List<SpriteRenderer> _pickupViews = new List<SpriteRenderer>();
         Sprite _sprite;
@@ -38,6 +45,29 @@ namespace RescatePapi
             _aura.transform.localScale = new Vector3(c.PlayerWidth + 0.3f, c.PlayerHeight + 0.3f, 1f);
             _player = CreateBox("Owner", OwnerColor, 10);
             _player.transform.localScale = new Vector3(c.PlayerWidth, c.PlayerHeight, 1f);
+
+            // Guardado (Core: SaveFile) y sonidos (Core: AudioService + ToneSynth)
+            _saveFile = new SaveFile<GameData>("rescatepapi");
+            _data = _saveFile.Load();
+            sim.SetBestScore(_data.bestScore);
+            _sounds = new GameSounds();
+            var audio = AudioService.Instance;
+            sim.Started += () => { _newRecord = false; audio.PlaySfx(_sounds.Start, 0.6f); };
+            sim.Jump.Jumped += () => audio.PlaySfx(_sounds.Jump, 0.5f, Random.Range(0.95f, 1.05f));
+            sim.Collected += p => audio.PlaySfx(p.Kind == PickupKind.Cacao ? _sounds.Cacao : _sounds.Pollito, 0.7f, Random.Range(0.97f, 1.1f));
+            sim.ShieldLost += () => audio.PlaySfx(_sounds.ShieldLost, 0.8f);
+            sim.Died += OnDied;
+        }
+
+        void OnDied()
+        {
+            AudioService.Instance.PlaySfx(_sounds.Die, 0.9f);
+            _newRecord = _sim.Score > _data.bestScore;
+            _data.bestScore = Mathf.Max(_data.bestScore, _sim.Score);
+            _data.cacaoTotal += _sim.Cacao;
+            _data.runs++;
+            try { _saveFile.Save(_data); }
+            catch (System.Exception e) { Debug.LogWarning($"[RescatePapi] No se pudo guardar: {e.Message}"); }
         }
 
         void Update()
@@ -117,17 +147,17 @@ namespace RescatePapi
             float pad = Screen.height * 0.03f;
             float lineH = Screen.height * 0.08f;
             GUI.Label(new Rect(pad, pad, Screen.width * 0.5f, lineH), $"Puntos: {_sim.Score}", _hud);
-            GUI.Label(new Rect(pad, pad + lineH, Screen.width * 0.5f, lineH),
-                $"Cacao: {_sim.Cacao}{(_sim.HasShield ? "   + Pollito" : "")}", _hud);
+            GUI.Label(new Rect(pad, pad + lineH, Screen.width * 0.6f, lineH),
+                $"Cacao: {_sim.Cacao}  (total {_data.cacaoTotal + (_sim.State == RunState.Running ? _sim.Cacao : 0)}){(_sim.HasShield ? "   + Pollito" : "")}", _hud);
             var right = new GUIStyle(_hud) { alignment = TextAnchor.UpperRight };
             GUI.Label(new Rect(Screen.width * 0.5f - pad, pad, Screen.width * 0.5f, lineH), $"Record: {_sim.BestScore}", right);
 
             string msg = _sim.State switch
             {
                 RunState.Ready => "Rescata a Papi\n\nToca = salto corto  |  Mantener = salto alto\nAguila: no saltes",
-                RunState.Dead => _sim.CanRestart
-                    ? $"Game Over\n{_sim.Score} puntos  -  {_sim.Cacao} cacao\n\nToca para reintentar"
-                    : $"Game Over\n{_sim.Score} puntos  -  {_sim.Cacao} cacao",
+                RunState.Dead => (_newRecord ? "¡Nuevo récord!\n" : "Game Over\n")
+                    + $"{_sim.Score} puntos  -  {_sim.Cacao} cacao"
+                    + (_sim.CanRestart ? "\n\nToca para reintentar" : ""),
                 _ => null
             };
             if (msg != null) GUI.Label(new Rect(0, 0, Screen.width, Screen.height * 0.8f), msg, _center);

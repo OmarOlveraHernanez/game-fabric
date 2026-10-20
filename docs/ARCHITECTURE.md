@@ -72,9 +72,9 @@ Prueba cerrada de Play (≈12 testers × 14 días, cuentas personales nuevas) ·
 | **F-1 Entorno** ✅ | Instalar Git, Claude Code, Unity Hub + Unity 6 LTS con Android, VS Code, emulador Android (tools/setup-emulator.ps1); abrir cuentas GitHub y Play Console (ver `SETUP.md`) | `tools/check-env.ps1` sin `[FALTA]` |
 | F0 Fundaciones ✅ | Repo Git, CLAUDE.md, permisos, proyecto Unity vacío | APK "hola mundo" corre en el emulador |
 | F1 Prototipo ✅ | Correr, saltar, obstáculos, morir, reiniciar (con cubos) | Divertido 2 minutos |
-| F2 Extracción | Save/Audio/Input/UI/Pooling al Core con pruebas | El juego funciona igual; el Core no depende del juego |
+| F2 Extracción ✅ | Save/Audio/Input/UI/Pooling al Core con pruebas | El juego funciona igual; el Core no depende del juego |
 | F3 Contenido | Monedas, dificultad, sprites, sonido, menús | Partida completa |
 | F4 Anuncios | AdMob en IDs de prueba, consentimiento, frecuencia. **Desde aquí el teléfono real es obligatorio** | Rewarded e interstitial funcionan en teléfono real |
 | F5 Automatización | test.ps1, build.ps1, comandos de Claude, hook pre-push, checklist | Claude prueba y genera el AAB solo |
 | F6 Publicación | Prueba interna → cerrada (14 días) → producción | En producción |
-| F7 Validar fábrica (adelantada) | `templates/android-2d` + `tools/new-game.ps1`; Rescate Papi generado con la plantilla | Juego 2 jugable en menos de 1 día |
+| F7 Validar fábrica (adelantada) ✅ | `templates/android-2d` + `tools/new-game.ps1`; Rescate Papi generado con la plantilla | Juego 2 jugable en menos de 1 día |

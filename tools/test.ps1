@@ -26,6 +26,7 @@ function Invoke-GameTests([string]$G) {
     )
     if (-not (Test-Path $results)) {
         Write-Host "[ERROR] $G : no se generaron resultados (codigo $code). Revisa $log" -ForegroundColor Red
+        Explain-UnityLog $log
         return $false
     }
     [xml]$x = Get-Content $results

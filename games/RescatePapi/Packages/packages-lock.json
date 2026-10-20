@@ -4,7 +4,9 @@
       "version": "file:../../../packages/com.gamefactory.core",
       "depth": 0,
       "source": "local",
-      "dependencies": {}
+      "dependencies": {
+        "com.unity.inputsystem": "1.11.0"
+      }
     },
     "com.unity.2d.animation": {
       "version": "13.0.6",

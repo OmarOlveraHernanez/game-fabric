@@ -1,14 +1,16 @@
 using UnityEngine.InputSystem;
 
-namespace RescatePapi
+namespace GameFactory.Core.Controls
 {
     /// <summary>
-    /// Lee "tocar" y "mantener" de pantalla tactil, raton o teclado (espacio / flecha arriba).
-    /// Candidato a moverse al Core en F2 (modulo Input).
+    /// Control de un dedo "tocar / mantener": pantalla tactil, raton (boton izquierdo) o teclado
+    /// (espacio / flecha arriba). Llamar Poll() una vez por frame antes de leer.
     /// </summary>
-    public sealed class InputReader
+    public sealed class TapHoldInput
     {
+        /// <summary>Se empezo a presionar en este frame.</summary>
         public bool PressedThisFrame { get; private set; }
+        /// <summary>Se esta manteniendo presionado.</summary>
         public bool Held { get; private set; }
 
         public void Poll()

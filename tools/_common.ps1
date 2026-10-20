@@ -73,3 +73,17 @@ function Invoke-UnityBatch([string]$EditorDir, [string[]]$UnityArgs) {
     $p = Start-Process -FilePath $exe -ArgumentList ($quoted -join ' ') -Wait -PassThru -NoNewWindow
     return $p.ExitCode
 }
+
+# Si el log de Unity muestra un bloqueo de archivos, explica la causa probable
+function Explain-UnityLog([string]$Log) {
+    if (-not (Test-Path $Log)) { return }
+    if (Select-String -Path $Log -Pattern 'EPERM|operation not permitted' -Quiet) {
+        Write-Host "[CAUSA] Un programa tiene bloqueada la cache de Unity (Library\PackageCache)." -ForegroundColor Yellow
+        Write-Host "        Casi siempre es VS Code (su extension de C#). Cierra VS Code (Archivo -> Salir) y Unity, y reintenta." -ForegroundColor Yellow
+    }
+    $cs = Select-String -Path $Log -Pattern 'error CS\d+' | Select-Object -First 5
+    if ($cs) {
+        Write-Host "[CAUSA] Errores de compilacion:" -ForegroundColor Yellow
+        $cs | ForEach-Object { Write-Host "        $($_.Line.Trim())" }
+    }
+}

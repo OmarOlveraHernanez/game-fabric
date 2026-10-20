@@ -1,5 +1,8 @@
 using System.Collections.Generic;
 using ChihuahuaJump.Logic;
+using GameFactory.Core.Audio;
+using GameFactory.Core.Controls;
+using GameFactory.Core.Save;
 using UnityEngine;
 
 namespace ChihuahuaJump
@@ -24,7 +27,11 @@ namespace ChihuahuaJump
 
         BounceSimulation _sim;
         Camera _cam;
-        InputReader _input;
+        PointerFollowInput _input;
+        SaveFile<GameData> _saveFile;
+        GameData _data;
+        GameSounds _sounds;
+        bool _newRecord;
         readonly List<SpriteRenderer> _hazardViews = new List<SpriteRenderer>();
         readonly List<SpriteRenderer> _pickupViews = new List<SpriteRenderer>();
         readonly List<SpriteRenderer> _warningViews = new List<SpriteRenderer>();
@@ -38,7 +45,7 @@ namespace ChihuahuaJump
             _sim = sim;
             _sprite = sprite;
             _cam = cam;
-            _input = new InputReader(cam);
+            _input = new PointerFollowInput(cam);
             var c = sim.Config;
             _owner = CreateBox("Owner", OwnerColor, 8);
             _owner.transform.localScale = new Vector3(0.7f, c.TrampolineY - 0.2f, 1f);
@@ -48,6 +55,29 @@ namespace ChihuahuaJump
             _aura.transform.localScale = new Vector3(c.DogSize + 0.3f, c.DogSize + 0.3f, 1f);
             _dog = CreateBox("Dog", DogColor, 11);
             _dog.transform.localScale = new Vector3(c.DogSize, c.DogSize, 1f);
+
+            // Guardado (Core: SaveFile) y sonidos (Core: AudioService + ToneSynth)
+            _saveFile = new SaveFile<GameData>("chihuahuajump");
+            _data = _saveFile.Load();
+            sim.SetBestScore(_data.bestScore);
+            _sounds = new GameSounds();
+            var audio = AudioService.Instance;
+            sim.Started += () => _newRecord = false;
+            sim.Bounced += () => audio.PlaySfx(_sounds.Bounce, 0.45f, Random.Range(0.92f, 1.08f));
+            sim.Collected += p => audio.PlaySfx(p.Kind == PickupKind.Cacao ? _sounds.Cacao : _sounds.Pollito, 0.7f, Random.Range(0.97f, 1.1f));
+            sim.ShieldLost += () => audio.PlaySfx(_sounds.ShieldLost, 0.8f);
+            sim.Died += OnDied;
+        }
+
+        void OnDied(DeathCause cause)
+        {
+            AudioService.Instance.PlaySfx(cause == DeathCause.Fell ? _sounds.Fell : _sounds.Hit, 0.9f);
+            _newRecord = _sim.Score > _data.bestScore;
+            _data.bestScore = Mathf.Max(_data.bestScore, _sim.Score);
+            _data.cacaoTotal += _sim.Cacao;
+            _data.runs++;
+            try { _saveFile.Save(_data); }
+            catch (System.Exception e) { Debug.LogWarning($"[ChihuahuaJump] No se pudo guardar: {e.Message}"); }
         }
 
         void Update()
@@ -147,7 +177,7 @@ namespace ChihuahuaJump
             float lineH = Screen.height * 0.045f;
             GUI.Label(new Rect(pad, pad, Screen.width, lineH), $"Rebotes: {_sim.Score}", _hud);
             GUI.Label(new Rect(pad, pad + lineH, Screen.width, lineH),
-                $"Cacao: {_sim.Cacao}{(_sim.HasShield ? "   + Pollito" : "")}", _hud);
+                $"Cacao: {_sim.Cacao}  (total {_data.cacaoTotal + (_sim.State == GameState.Playing ? _sim.Cacao : 0)}){(_sim.HasShield ? "   + Pollito" : "")}", _hud);
             var right = new GUIStyle(_hud) { alignment = TextAnchor.UpperRight };
             GUI.Label(new Rect(0, pad, Screen.width - pad, lineH), $"Record: {_sim.BestScore}", right);
 
@@ -157,7 +187,7 @@ namespace ChihuahuaJump
             else if (_sim.State == GameState.Dead)
             {
                 string cause = _sim.LastDeath == DeathCause.Fell ? "¡Se cayó!" : "¡Lo atrapó un enemigo!";
-                msg = $"{cause}\n\n{_sim.Score} rebotes  -  {_sim.Cacao} cacao" + (_sim.CanRestart ? "\n\nToca para reintentar" : "");
+                msg = (_newRecord ? "¡Nuevo récord!\n" : "") + $"{cause}\n\n{_sim.Score} rebotes  -  {_sim.Cacao} cacao" + (_sim.CanRestart ? "\n\nToca para reintentar" : "");
             }
             if (msg != null) GUI.Label(new Rect(pad, 0, Screen.width - 2 * pad, Screen.height * 0.75f), msg, _center);
 

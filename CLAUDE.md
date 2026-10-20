@@ -36,4 +36,6 @@ Los scripts en modo batch **fallan si el proyecto está abierto en Unity o si VS
 
 ## Fase actual
 F0 ✅ · F1 ✅ (prototipo de trampolín en ChihuahuaJump) · Plantilla + `new-game.ps1` creados (2026-10-18).
-**Juego principal: Rescate Papi.** Siguiente: validar Rescate Papi generado con la plantilla y luego **F2 · Extracción al Core** (Save, Audio, Input) usada por ambos juegos.
+F7 adelantada ✅: Rescate Papi generado con la plantilla y unido a `main` (2026-10-18).
+**Juego principal: Rescate Papi.** F2 ✅ (2026-10-18): Core 0.2.0 (Save, Audio, Controls) integrado en ambos juegos.
+Siguiente: **F3 · Contenido de Rescate Papi** (arte estilo códice, sonido final, menús) o F4 anuncios — decidir con el usuario.
