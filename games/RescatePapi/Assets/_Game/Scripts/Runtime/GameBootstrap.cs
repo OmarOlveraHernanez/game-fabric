@@ -4,13 +4,13 @@ using UnityEngine;
 namespace RescatePapi
 {
     /// <summary>
-    /// Arma la escena del prototipo por codigo (camara horizontal, suelo, runner).
-    /// Despues se reemplaza por escena/prefabs con arte estilo codice.
+    /// Arma la escena por codigo: camara horizontal, fondo, suelo y runner.
+    /// Usa los sprites de Assets/_Game/Art/Resources/Sprites si existen; si no, formas de color.
     /// </summary>
     public static class GameBootstrap
     {
-        public static readonly Color SkyColor = new Color(0.96f, 0.91f, 0.80f);   // papel amate claro
-        public static readonly Color GroundColor = new Color(0.55f, 0.36f, 0.22f); // tierra
+        public static readonly Color SkyColor = new Color(0.95f, 0.90f, 0.80f);    // amate
+        public static readonly Color GroundColor = new Color(0.48f, 0.29f, 0.16f); // tierra
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -29,18 +29,37 @@ namespace RescatePapi
             cam.transform.position = new Vector3(0f, 3.5f, -10f); // suelo (y=0) cerca de la parte baja
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = SkyColor;
+            float viewHalfWidth = cam.orthographicSize * Mathf.Max(1f, cam.aspect) + 1f;
 
+            var sprites = new SpriteSet();
             Sprite square = CreateSquareSprite();
 
-            var ground = new GameObject("Ground").AddComponent<SpriteRenderer>();
-            ground.sprite = square;
-            ground.color = GroundColor;
-            ground.transform.position = new Vector3(0f, -2f, 0f);
-            ground.transform.localScale = new Vector3(60f, 2f, 1f);
+            // Fondos con parallax (si hay arte) y suelo
+            var strips = new System.Collections.Generic.List<(ScrollingStrip strip, float factor)>();
+            AddStrip(strips, sprites, "fondo_lejano", -1f, 0.08f, -20, viewHalfWidth);
+            AddStrip(strips, sprites, "fondo_medio", -1f, 0.3f, -10, viewHalfWidth);
+            bool hasGround = AddStrip(strips, sprites, "suelo_tierra", -1f, 1f, 1, viewHalfWidth);
+            if (!hasGround)
+            {
+                var ground = new GameObject("Ground").AddComponent<SpriteRenderer>();
+                ground.sprite = square;
+                ground.color = GroundColor;
+                ground.transform.position = new Vector3(0f, -2f, 0f);
+                ground.transform.localScale = new Vector3(60f, 2f, 1f);
+            }
 
             var sim = new RunnerSimulation(new RunnerConfig(), System.Environment.TickCount);
             var view = new GameObject("Runner").AddComponent<RunnerView>();
-            view.Init(sim, square);
+            view.Init(sim, square, sprites, strips.ConvertAll(s => s.strip));
+        }
+
+        static bool AddStrip(System.Collections.Generic.List<(ScrollingStrip, float)> list, SpriteSet sprites,
+                             string key, float bottomY, float factor, int order, float viewHalfWidth)
+        {
+            var frames = sprites.Get(key);
+            if (frames == null) return false;
+            list.Add((ScrollingStrip.Create(key, frames[0], bottomY, factor, order, viewHalfWidth), factor));
+            return true;
         }
 
         /// <summary>Sprite blanco de 1x1 unidad con pivote abajo-centro (se colorea por SpriteRenderer).</summary>

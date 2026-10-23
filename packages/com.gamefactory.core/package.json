@@ -1,6 +1,6 @@
 {
   "name": "com.gamefactory.core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "displayName": "Game Factory Core",
   "description": "Nucleo compartido para juegos 2D Android de Game Factory.",
   "unity": "6000.3",
