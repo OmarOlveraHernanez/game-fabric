@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0 - 2026-10-20
+- **Arte**: `ArtImportPostprocessor` (editor). Todo PNG en `Assets/_Game/Art/` se importa como Sprite, 256 PPU, pivote abajo-centro, sin mipmaps; `fondo_*` y `suelo_*` con malla completa.
+
 ## 0.2.0 - 2026-10-18
 - **Save**: `SaveFile<T>` (JSON en persistentDataPath, escritura segura con .tmp, recuperación ante corrupción).
 - **Audio**: `AudioService` (pool de efectos, música, volumen/silencio guardados) y `ToneSynth` (sonidos provisionales generados por código).

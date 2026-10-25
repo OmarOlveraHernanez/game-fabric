@@ -46,9 +46,9 @@ namespace RescatePapi.Logic
                     h.Height = MathUtil.Range(_rng, _c.SerpentMinHeight, _c.SerpentMaxHeight);
                     break;
                 case HazardKind.Jaguar:
-                    h.Width = MathUtil.Range(_rng, _c.JaguarMinWidth, _c.JaguarMaxWidth);
                     float maxH = MathUtil.Lerp(_c.JaguarMaxHeightEasy, _c.JaguarMaxHeightHard, level);
                     h.Height = MathUtil.Range(_rng, _c.JaguarMinHeight, maxH);
+                    h.Width = h.Height * _c.JaguarAspect;
                     h.WillCharge = level >= _c.JaguarChargeFromLevel && _rng.NextDouble() < _c.JaguarChargeChance;
                     // Compensa la distancia que ganara al embestir: llega al jugador en el mismo tiempo
                     // que uno normal, solo que acelera al final (sorpresa sin ser injusto).

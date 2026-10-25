@@ -14,7 +14,7 @@ namespace RescatePapi
     public sealed class RunnerView : MonoBehaviour
     {
         // Paleta provisional inspirada en codices
-        static readonly Color OwnerColor   = new Color(0.10f, 0.55f, 0.60f); // turquesa
+        static readonly Color PapiColor    = new Color(0.84f, 0.63f, 0.38f); // canela (Papi)
         static readonly Color ShieldColor  = new Color(1.00f, 0.85f, 0.25f); // aura del pollito
         static readonly Color SerpentColor = new Color(0.20f, 0.60f, 0.30f); // jade
         static readonly Color JaguarColor  = new Color(0.90f, 0.62f, 0.15f); // ocre
@@ -32,18 +32,32 @@ namespace RescatePapi
         readonly List<SpriteRenderer> _hazardViews = new List<SpriteRenderer>();
         readonly List<SpriteRenderer> _pickupViews = new List<SpriteRenderer>();
         Sprite _sprite;
-        SpriteRenderer _player, _aura;
+        SpriteSet _art;
+        System.Collections.Generic.List<ScrollingStrip> _strips;
+        SpriteRenderer _player, _aura, _owner;
+        Sprite[] _artRun, _artJump, _artHit, _artOwner, _artSerpent, _artJaguar, _artEagle, _artCacao, _artPollito;
         GUIStyle _hud, _center, _small;
         float _fps;
 
-        public void Init(RunnerSimulation sim, Sprite sprite)
+        public void Init(RunnerSimulation sim, Sprite sprite, SpriteSet art, System.Collections.Generic.List<ScrollingStrip> strips)
         {
             _sim = sim;
             _sprite = sprite;
+            _art = art;
+            _strips = strips;
+            _artRun = art.Get("papi_correr");
+            _artJump = art.Get("papi_salto");
+            _artHit = art.Get("papi_golpe");
+            _artOwner = art.Get("dueno_atrapado");
+            _artSerpent = art.Get("serpiente");
+            _artJaguar = art.Get("jaguar");
+            _artEagle = art.Get("aguila");
+            _artCacao = art.Get("cacao");
+            _artPollito = art.Get("pollito");
             var c = sim.Config;
             _aura = CreateBox("ShieldAura", ShieldColor, 9);
             _aura.transform.localScale = new Vector3(c.PlayerWidth + 0.3f, c.PlayerHeight + 0.3f, 1f);
-            _player = CreateBox("Owner", OwnerColor, 10);
+            _player = CreateBox("Papi", PapiColor, 10);
             _player.transform.localScale = new Vector3(c.PlayerWidth, c.PlayerHeight, 1f);
 
             // Guardado (Core: SaveFile) y sonidos (Core: AudioService + ToneSynth)
@@ -85,6 +99,21 @@ namespace RescatePapi
             var c = _sim.Config;
             var playerPos = new Vector3(c.PlayerX, _sim.Jump.Y, 0f);
             _player.transform.position = playerPos;
+            float t = Time.time;
+            Sprite[] papiFrames = _sim.State == RunState.Dead ? (_artHit ?? _artJump ?? _artRun)
+                                 : !_sim.Jump.IsGrounded ? (_artJump ?? _artRun)
+                                 : _artRun;
+            float runTime = _sim.State == RunState.Running ? _sim.Distance / c.BaseSpeed : 0f;
+            ApplyArt(_player, SpriteSet.Frame(papiFrames, runTime, 10f), PapiColor, new Vector2(c.PlayerWidth, c.PlayerHeight), 1f);
+            foreach (var strip in _strips) strip.SetDistance(_sim.Distance);
+            // El dueno atrapado (la meta) solo se ve en la pantalla de inicio, pidiendo ayuda
+            if (_owner == null && _artOwner != null) _owner = CreateBox("DuenoAtrapado", Color.white, 4);
+            if (_owner != null)
+            {
+                _owner.enabled = _sim.State == RunState.Ready;
+                _owner.sprite = SpriteSet.Frame(_artOwner, t, 3f);
+                _owner.transform.position = new Vector3(5.5f, 0f, 0f);
+            }
             _aura.transform.position = playerPos + new Vector3(0f, -0.15f, 0f);
             _aura.enabled = _sim.HasShield;
             // Parpadeo durante la invulnerabilidad tras perder el escudo
@@ -99,14 +128,19 @@ namespace RescatePapi
                 if (v.gameObject.activeSelf != active) v.gameObject.SetActive(active);
                 if (!active) continue;
                 var h = hazards[i];
-                v.transform.position = new Vector3(h.X, h.Bottom, 0f);
-                v.transform.localScale = new Vector3(h.Width, h.Height, 1f);
-                v.color = h.Kind switch
+                Color fallback = h.Kind switch
                 {
                     HazardKind.Serpent => SerpentColor,
                     HazardKind.Jaguar => h.IsCharging ? JaguarCharge : JaguarColor,
                     _ => EagleColor
                 };
+                Sprite[] frames = h.Kind == HazardKind.Serpent ? _artSerpent : h.Kind == HazardKind.Jaguar ? _artJaguar : _artEagle;
+                // Jaguar: el arte esta dibujado para la caja de JaguarRefHeight; escala con su altura
+                float scale = h.Kind == HazardKind.Jaguar ? h.Height / JaguarRefHeight : 1f;
+                float yOffset = h.Kind == HazardKind.Eagle && frames != null ? -EagleArtMargin : 0f;
+                v.transform.position = new Vector3(h.X, h.Bottom + yOffset, 0f);
+                ApplyArt(v, SpriteSet.Frame(frames, t + i * 0.37f, h.Kind == HazardKind.Eagle ? 6f : 5f), fallback, new Vector2(h.Width, h.Height), scale);
+                if (frames != null && h.Kind == HazardKind.Jaguar && h.IsCharging) v.color = new Color(1f, 0.65f, 0.6f); // tinte al embestir
             }
 
             var pickups = _sim.Pickups;
@@ -118,9 +152,31 @@ namespace RescatePapi
                 if (v.gameObject.activeSelf != active) v.gameObject.SetActive(active);
                 if (!active) continue;
                 var p = pickups[i];
-                v.transform.position = new Vector3(p.X, p.Bottom, 0f);
-                v.transform.localScale = new Vector3(p.Size, p.Size, 1f);
-                v.color = p.Kind == PickupKind.Cacao ? CacaoColor : PollitoColor;
+                Sprite[] frames = p.Kind == PickupKind.Cacao ? _artCacao : _artPollito;
+                v.transform.position = new Vector3(p.X, p.Bottom - (frames != null ? PickupArtMargin : 0f), 0f);
+                ApplyArt(v, SpriteSet.Frame(frames, t, 4f), p.Kind == PickupKind.Cacao ? CacaoColor : PollitoColor, new Vector2(p.Size, p.Size), 1f);
+            }
+        }
+
+        // Relacion entre el lienzo del arte y la caja de colision (ver ARTE.md)
+        const float JaguarRefHeight = 1.4f;   // el lienzo del jaguar (1.5 u) corresponde a una caja de 1.4 u de alto
+        const float EagleArtMargin = 0.075f;  // margen inferior del lienzo del aguila
+        const float PickupArtMargin = 0.025f;
+
+        /// <summary>Usa el sprite si existe (tamano natural * escala); si no, la forma de color del tamano de la caja.</summary>
+        void ApplyArt(SpriteRenderer sr, Sprite art, Color fallbackColor, Vector2 fallbackSize, float scale)
+        {
+            if (art != null)
+            {
+                sr.sprite = art;
+                sr.color = Color.white;
+                sr.transform.localScale = new Vector3(scale, scale, 1f);
+            }
+            else
+            {
+                sr.sprite = _sprite;
+                sr.color = fallbackColor;
+                sr.transform.localScale = new Vector3(fallbackSize.x, fallbackSize.y, 1f);
             }
         }
 
@@ -154,7 +210,7 @@ namespace RescatePapi
 
             string msg = _sim.State switch
             {
-                RunState.Ready => "Rescata a Papi\n\nToca = salto corto  |  Mantener = salto alto\nAguila: no saltes",
+                RunState.Ready => "¡Papi, salva a tu dueño!\nEstá atrapado en la pirámide\n\nToca = salto corto  |  Mantener = salto alto\nÁguila: no saltes",
                 RunState.Dead => (_newRecord ? "¡Nuevo récord!\n" : "Game Over\n")
                     + $"{_sim.Score} puntos  -  {_sim.Cacao} cacao"
                     + (_sim.CanRestart ? "\n\nToca para reintentar" : ""),

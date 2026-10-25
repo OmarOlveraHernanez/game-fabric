@@ -34,27 +34,28 @@ namespace RescatePapi.Logic
         public float GapTimeMinHard = 0.8f;
         public float GapTimeMaxHard = 1.15f;
 
-        // Serpiente: baja y larga, en el suelo
+        // Serpiente: baja y larga, en el suelo. Tamano fijo (el sprite no se deforma).
         public float SerpentWeight = 1f;
-        public float SerpentMinWidth = 0.9f, SerpentMaxWidth = 1.3f;
-        public float SerpentMinHeight = 0.45f, SerpentMaxHeight = 0.65f;
+        public float SerpentMinWidth = 1.2f, SerpentMaxWidth = 1.2f;
+        public float SerpentMinHeight = 0.55f, SerpentMaxHeight = 0.55f;
 
         // Jaguar: alto; puede embestir (acelera al acercarse)
         public float JaguarWeight = 1f;
-        public float JaguarMinWidth = 1.2f, JaguarMaxWidth = 1.5f;
+        public float JaguarAspect = 0.80f;         // ancho = alto * aspecto; 0.80 = silueta del sprite IA (jaguar de pie)
         public float JaguarMinHeight = 1.1f;
         public float JaguarMaxHeightEasy = 1.35f, JaguarMaxHeightHard = 1.65f;
         public float JaguarChargeFromLevel = 0.3f;
         public float JaguarChargeChance = 0.5f;
         public float JaguarChargeDistance = 9f;    // distancia al jugador en la que embiste
         public float JaguarChargeSpeed = 3f;       // velocidad extra al embestir
+        public float JaguarMaxWidth => JaguarMaxHeightHard * JaguarAspect;
 
         // Aguila: vuela a media altura; de pie pasa por encima, cualquier salto choca
         public float EagleWeight = 0.8f;
         public float EagleFromLevel = 0.15f;
         public float EagleWidth = 1.4f;
         public float EagleThickness = 0.6f;
-        public float EagleMinBottom = 1.05f, EagleMaxBottom = 1.3f;
+        public float EagleMinBottom = 1.05f, EagleMaxBottom = 1.3f; // tamano fijo; solo varia la altura de vuelo
 
         // Premios
         public float CacaoChancePerGap = 0.65f;
