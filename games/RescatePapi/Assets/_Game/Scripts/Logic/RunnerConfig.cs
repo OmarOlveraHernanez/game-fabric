@@ -41,7 +41,7 @@ namespace RescatePapi.Logic
 
         // Jaguar: alto; puede embestir (acelera al acercarse)
         public float JaguarWeight = 1f;
-        public float JaguarAspect = 0.95f;         // ancho = alto * aspecto (el sprite escala sin deformarse)
+        public float JaguarAspect = 0.80f;         // ancho = alto * aspecto; 0.80 = silueta del sprite IA (jaguar de pie)
         public float JaguarMinHeight = 1.1f;
         public float JaguarMaxHeightEasy = 1.35f, JaguarMaxHeightHard = 1.65f;
         public float JaguarChargeFromLevel = 0.3f;
