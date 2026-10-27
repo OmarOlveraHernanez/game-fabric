@@ -153,7 +153,9 @@ namespace RescatePapi
                 if (!active) continue;
                 var p = pickups[i];
                 Sprite[] frames = p.Kind == PickupKind.Cacao ? _artCacao : _artPollito;
-                v.transform.position = new Vector3(p.X, p.Bottom - (frames != null ? PickupArtMargin : 0f), 0f);
+                // El tamal (escudo) flota suave arriba/abajo; solo es visual, la caja de choque no se mueve
+                float bob = p.Kind == PickupKind.Pollito ? Mathf.Sin(t * TamalBobSpeed) * TamalBobHeight : 0f;
+                v.transform.position = new Vector3(p.X, p.Bottom - (frames != null ? PickupArtMargin : 0f) + bob, 0f);
                 ApplyArt(v, SpriteSet.Frame(frames, t, 4f), p.Kind == PickupKind.Cacao ? CacaoColor : PollitoColor, new Vector2(p.Size, p.Size), 1f);
             }
         }
@@ -162,6 +164,8 @@ namespace RescatePapi
         const float JaguarRefHeight = 1.4f;   // el lienzo del jaguar (1.5 u) corresponde a una caja de 1.4 u de alto
         const float EagleArtMargin = 0.075f;  // margen inferior del lienzo del aguila
         const float PickupArtMargin = 0.025f;
+        const float TamalBobHeight = 0.08f;   // unidades que sube/baja el tamal al flotar
+        const float TamalBobSpeed = 4f;       // velocidad de la flotacion (radianes por segundo)
 
         /// <summary>Usa el sprite si existe (tamano natural * escala); si no, la forma de color del tamano de la caja.</summary>
         void ApplyArt(SpriteRenderer sr, Sprite art, Color fallbackColor, Vector2 fallbackSize, float scale)
@@ -204,7 +208,7 @@ namespace RescatePapi
             float lineH = Screen.height * 0.08f;
             GUI.Label(new Rect(pad, pad, Screen.width * 0.5f, lineH), $"Puntos: {_sim.Score}", _hud);
             GUI.Label(new Rect(pad, pad + lineH, Screen.width * 0.6f, lineH),
-                $"Cacao: {_sim.Cacao}  (total {_data.cacaoTotal + (_sim.State == RunState.Running ? _sim.Cacao : 0)}){(_sim.HasShield ? "   + Pollito" : "")}", _hud);
+                $"Monedas: {_sim.Cacao}  (total {_data.cacaoTotal + (_sim.State == RunState.Running ? _sim.Cacao : 0)}){(_sim.HasShield ? "   + Tamal (escudo)" : "")}", _hud);
             var right = new GUIStyle(_hud) { alignment = TextAnchor.UpperRight };
             GUI.Label(new Rect(Screen.width * 0.5f - pad, pad, Screen.width * 0.5f, lineH), $"Record: {_sim.BestScore}", right);
 
@@ -212,7 +216,7 @@ namespace RescatePapi
             {
                 RunState.Ready => "¡Papi, salva a tu dueño!\nEstá atrapado en la pirámide\n\nToca = salto corto  |  Mantener = salto alto\nÁguila: no saltes",
                 RunState.Dead => (_newRecord ? "¡Nuevo récord!\n" : "Game Over\n")
-                    + $"{_sim.Score} puntos  -  {_sim.Cacao} cacao"
+                    + $"{_sim.Score} puntos  -  {_sim.Cacao} monedas"
                     + (_sim.CanRestart ? "\n\nToca para reintentar" : ""),
                 _ => null
             };

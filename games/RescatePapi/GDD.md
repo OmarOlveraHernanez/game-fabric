@@ -31,8 +31,9 @@ Su dueño quedó atrapado en lo alto de la pirámide, y **Papi, un chihuahua val
 ## 5. Premios
 | Premio | Efecto | MVP |
 |---|---|---|
-| Grano de cacao | Moneda (la real de los mexicas). Filas en el suelo y arcos sobre jaguares | ✅ |
-| Pollito | Escudo: aguanta un golpe + 1 s de invulnerabilidad | ✅ |
+| Moneda de chocolate ("cacao") | Moneda. Filas en el suelo y arcos sobre jaguares. Sprite `cacao` | ✅ |
+| Tamal | Escudo: aguanta un golpe + 1 s de invulnerabilidad. Sprite `pollito` (nombre interno) | ✅ |
+| Pollo asado | Papi dispara dardos unos segundos y destruye enemigos. Arte ya generado (`art-source/RescatePapi/ia/pollo_v1.png`) | Después |
 | Pez | Imán de cacao por unos segundos | Después |
 | Power | Invencibilidad corta | Después |
 
