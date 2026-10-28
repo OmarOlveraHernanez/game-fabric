@@ -16,7 +16,7 @@ namespace RescatePapi
         // Paleta provisional inspirada en codices
         static readonly Color PapiColor    = new Color(0.84f, 0.63f, 0.38f); // canela (Papi)
         static readonly Color ShieldColor  = new Color(1.00f, 0.85f, 0.25f); // aura del pollito
-        static readonly Color SerpentColor = new Color(0.20f, 0.60f, 0.30f); // jade
+        static readonly Color SerpentColor = new Color(0.55f, 0.30f, 0.70f); // morado (contrasta con la selva)
         static readonly Color JaguarColor  = new Color(0.90f, 0.62f, 0.15f); // ocre
         static readonly Color JaguarCharge = new Color(0.85f, 0.20f, 0.15f); // rojo grana (embistiendo)
         static readonly Color EagleColor   = new Color(0.35f, 0.22f, 0.12f); // cafe oscuro

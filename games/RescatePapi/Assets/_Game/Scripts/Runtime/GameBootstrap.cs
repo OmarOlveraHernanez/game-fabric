@@ -9,7 +9,10 @@ namespace RescatePapi
     /// </summary>
     public static class GameBootstrap
     {
-        public static readonly Color SkyColor = new Color(0.95f, 0.90f, 0.80f);    // amate
+        public static readonly Color SkyColor = new Color(0.68f, 0.87f, 0.73f);    // verde menta: igual al borde de arriba de fondo_lejano
+        const float CameraHalfHeight = 4f;   // antes 5: se ve un 25% mas cerca
+        const float CameraY = 2.8f;          // ve de y=-1.2 a y=6.8
+        const float PlayerLeftMargin = 2f;   // unidades entre Papi y el borde izquierdo
         public static readonly Color GroundColor = new Color(0.48f, 0.29f, 0.16f); // tierra
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -25,11 +28,15 @@ namespace RescatePapi
                 cam = camGo.AddComponent<Camera>();
             }
             cam.orthographic = true;
-            cam.orthographicSize = 5f;                    // 10 unidades de alto visibles
-            cam.transform.position = new Vector3(0f, 3.5f, -10f); // suelo (y=0) cerca de la parte baja
+            cam.orthographicSize = CameraHalfHeight;      // 8 unidades de alto visibles (personajes mas grandes en pantalla)
+            float halfW = cam.orthographicSize * Mathf.Max(1f, cam.aspect);
+            // Papi queda a PlayerLeftMargin del borde izquierdo en cualquier proporcion de pantalla;
+            // asi todo lo demas del ancho es camino visible por delante
+            float camX = new RunnerConfig().PlayerX + halfW - PlayerLeftMargin;
+            cam.transform.position = new Vector3(camX, CameraY, -10f); // suelo (y=0) cerca de la parte baja
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = SkyColor;
-            float viewHalfWidth = cam.orthographicSize * Mathf.Max(1f, cam.aspect) + 1f;
+            float viewHalfWidth = halfW + Mathf.Abs(camX) + 1f;
 
             var sprites = new SpriteSet();
             Sprite square = CreateSquareSprite();
@@ -38,7 +45,7 @@ namespace RescatePapi
             var strips = new System.Collections.Generic.List<(ScrollingStrip strip, float factor)>();
             AddStrip(strips, sprites, "fondo_lejano", -1f, 0.08f, -20, viewHalfWidth);
             AddStrip(strips, sprites, "fondo_medio", -1f, 0.3f, -10, viewHalfWidth);
-            bool hasGround = AddStrip(strips, sprites, "suelo_tierra", -1f, 1f, 1, viewHalfWidth);
+            bool hasGround = AddStrip(strips, sprites, "suelo_tierra", -2f, 1f, 1, viewHalfWidth); // base en y=-2: el borde del pasto (512 px arriba) queda en y=0
             if (!hasGround)
             {
                 var ground = new GameObject("Ground").AddComponent<SpriteRenderer>();
