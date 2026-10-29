@@ -27,6 +27,33 @@ namespace RescatePapi.Tests
         }
 
         [Test]
+        public void Begin_StartsRun_OnlyFromReady()
+        {
+            var sim = new RunnerSimulation(new RunnerConfig(), 1);
+            int started = 0;
+            sim.Started += () => started++;
+            sim.Begin();
+            Assert.AreEqual(RunState.Running, sim.State);
+            sim.Begin();                       // ya corriendo: no hace nada
+            Assert.AreEqual(1, started);
+        }
+
+        [Test]
+        public void TryRestart_WaitsForDelay_ThenStartsFreshRun()
+        {
+            var c = new RunnerConfig();
+            var sim = Running(2, c);
+            Assert.IsFalse(sim.TryRestart(), "no se puede reiniciar corriendo");
+            for (int i = 0; i < 60 * 60 && sim.State == RunState.Running; i++) sim.Tick(Dt, false, false);
+            Assert.AreEqual(RunState.Dead, sim.State);
+            Assert.IsFalse(sim.TryRestart(), "antes de RestartDelay no reinicia");
+            for (float t = 0; t <= c.RestartDelay + Dt; t += Dt) sim.Tick(Dt, false, false);
+            Assert.IsTrue(sim.TryRestart());
+            Assert.AreEqual(RunState.Running, sim.State);
+            Assert.AreEqual(0f, sim.Distance);
+        }
+
+        [Test]
         public void WithoutJumping_PlayerDies_AndBestScoreIsKept()
         {
             var sim = Running(2);

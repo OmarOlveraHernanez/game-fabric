@@ -66,17 +66,35 @@ namespace RescatePapi.Logic
             _distanceToNextSpawn = _c.BaseSpeed * _c.FirstHazardDelay;
         }
 
+        /// <summary>Empieza la carrera desde la pantalla de inicio (boton Jugar o tocar la pantalla).</summary>
+        public void Begin()
+        {
+            if (State != RunState.Ready) return;
+            State = RunState.Running;
+            Started?.Invoke();
+        }
+
+        /// <summary>Nueva carrera tras morir (boton Otra vez). False si aun no pasa RestartDelay.</summary>
+        public bool TryRestart()
+        {
+            if (!CanRestart) return false;
+            ResetRun();
+            State = RunState.Running;
+            Started?.Invoke();
+            return true;
+        }
+
         public void Tick(float dt, bool pressedThisFrame, bool held)
         {
             switch (State)
             {
                 case RunState.Ready:
-                    if (pressedThisFrame) { State = RunState.Running; Started?.Invoke(); }
+                    if (pressedThisFrame) Begin();
                     return;
 
                 case RunState.Dead:
                     _deadTime += dt;
-                    if (pressedThisFrame && CanRestart) { ResetRun(); State = RunState.Running; Started?.Invoke(); }
+                    if (pressedThisFrame) TryRestart();
                     return;
             }
 

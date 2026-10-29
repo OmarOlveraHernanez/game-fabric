@@ -15,5 +15,6 @@ namespace RescatePapi
         public readonly AudioClip ShieldLost = ToneSynth.CreateClip("shield", 520f, 180f, 0.22f, Wave.Square, 0.4f);
         public readonly AudioClip Die = ToneSynth.CreateClip("die", 420f, 70f, 0.55f, Wave.Square, 0.45f);
         public readonly AudioClip Start = ToneSynth.CreateClip("start", 440f, 880f, 0.15f, Wave.Triangle, 0.4f);
+        public readonly AudioClip Click = ToneSynth.CreateClip("click", 700f, 950f, 0.05f, Wave.Sine, 0.35f);
     }
 }

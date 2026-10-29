@@ -3,13 +3,14 @@ using GameFactory.Core.Audio;
 using GameFactory.Core.Controls;
 using GameFactory.Core.Save;
 using RescatePapi.Logic;
+using RescatePapi.UI;
 using UnityEngine;
 
 namespace RescatePapi
 {
     /// <summary>
-    /// Conecta RunnerSimulation con Unity: lee input, avanza la simulacion y dibuja con formas de color.
-    /// HUD con OnGUI solo para el prototipo; el arte estilo codice llega despues.
+    /// Conecta RunnerSimulation con Unity: lee input, avanza la simulacion y dibuja los sprites
+    /// (o formas de color si falta el arte). Las pantallas y el HUD estan en GameMenus.
     /// </summary>
     public sealed class RunnerView : MonoBehaviour
     {
@@ -36,7 +37,10 @@ namespace RescatePapi
         System.Collections.Generic.List<ScrollingStrip> _strips;
         SpriteRenderer _player, _aura, _owner;
         Sprite[] _artAura, _artRun, _artJump, _artHit, _artOwner, _artSerpent, _artJaguar, _artEagle, _artCacao, _artPollito;
-        GUIStyle _hud, _center, _small;
+        GameMenus _menus;
+        bool _pressOnUi;               // el toque empezo sobre un boton: no cuenta como salto
+        RunState _lastState;
+        GUIStyle _small;
         float _fps;
 
         public void Init(RunnerSimulation sim, Sprite sprite, SpriteSet art, System.Collections.Generic.List<ScrollingStrip> strips)
@@ -67,18 +71,44 @@ namespace RescatePapi
             sim.SetBestScore(_data.bestScore);
             _sounds = new GameSounds();
             var audio = AudioService.Instance;
-            sim.Started += () => { _newRecord = false; audio.PlaySfx(_sounds.Start, 0.6f); };
+            sim.Started += () => { _newRecord = false; _menus.SetNewRecord(false); audio.PlaySfx(_sounds.Start, 0.6f); };
             sim.Jump.Jumped += () => audio.PlaySfx(_sounds.Jump, 0.5f, Random.Range(0.95f, 1.05f));
             sim.Collected += p => audio.PlaySfx(p.Kind == PickupKind.Cacao ? _sounds.Cacao : _sounds.Pollito, 0.7f, Random.Range(0.97f, 1.1f));
             sim.ShieldLost += () => audio.PlaySfx(_sounds.ShieldLost, 0.8f);
             sim.Died += OnDied;
+
+            // Pantallas: inicio, HUD, pausa y fin de partida
+            _menus = new GameObject("Menus").AddComponent<GameMenus>();
+            _menus.Init(sim, _data, First(_artCacao), First(_artPollito), _sounds.Click);
+            _menus.PlayPressed += () => _sim.Begin();
+            _menus.RestartPressed += () => _sim.TryRestart();
+            _menus.HomePressed += GoHome;
+            _lastState = sim.State;
         }
+
+        static Sprite First(Sprite[] frames) => frames != null && frames.Length > 0 ? frames[0] : null;
 
         void OnDied()
         {
             AudioService.Instance.PlaySfx(_sounds.Die, 0.9f);
             _newRecord = _sim.Score > _data.bestScore;
+            _menus.SetNewRecord(_newRecord);
+            SaveRun();
+        }
+
+        /// <summary>Volver a la pantalla de inicio (desde pausa o desde el fin de partida).</summary>
+        void GoHome()
+        {
+            if (_sim.State == RunState.Running) SaveRun(); // carrera abandonada: se guardan monedas y record
+            _menus.SetPaused(false);
+            _sim.ResetRun();
+            _lastState = _sim.State;
+        }
+
+        void SaveRun()
+        {
             _data.bestScore = Mathf.Max(_data.bestScore, _sim.Score);
+            _sim.SetBestScore(_data.bestScore);
             _data.cacaoTotal += _sim.Cacao;
             _data.runs++;
             try { _saveFile.Save(_data); }
@@ -90,7 +120,14 @@ namespace RescatePapi
             if (_sim == null) return;
             float dt = Mathf.Min(Time.deltaTime, 1f / 30f); // evita saltos grandes si hay tirones
             _input.Poll();
-            _sim.Tick(dt, _input.PressedThisFrame, _input.Held);
+            bool pressed = _input.PressedThisFrame, held = _input.Held;
+            if (!held) _pressOnUi = false;
+            if (pressed && UiKit.TryGetPressedPointer(out var pointer) && UiKit.IsOverUI(pointer)) _pressOnUi = true;
+            if (_pressOnUi) { pressed = false; held = false; }
+            if (_sim.State == RunState.Dead) pressed = false;                                 // reiniciar solo con los botones
+            if (_sim.State == RunState.Running && _lastState != RunState.Running) pressed = false; // un boton empezo la carrera
+            if (!_menus.Paused) _sim.Tick(dt, pressed, held);
+            _lastState = _sim.State;
             Sync();
             _fps = Mathf.Lerp(_fps, 1f / Mathf.Max(Time.unscaledDeltaTime, 0.0001f), 0.1f);
         }
@@ -211,41 +248,27 @@ namespace RescatePapi
             return sr;
         }
 
-        void OnGUI()
+        // Pausa automatica si la app pasa a segundo plano (llamada, notificacion, boton de inicio)
+        void OnApplicationPause(bool paused)
         {
-            if (_sim == null) return;
-            if (_hud == null) BuildStyles();
-
-            float pad = Screen.height * 0.03f;
-            float lineH = Screen.height * 0.08f;
-            GUI.Label(new Rect(pad, pad, Screen.width * 0.5f, lineH), $"Puntos: {_sim.Score}", _hud);
-            GUI.Label(new Rect(pad, pad + lineH, Screen.width * 0.6f, lineH),
-                $"Monedas: {_sim.Cacao}  (total {_data.cacaoTotal + (_sim.State == RunState.Running ? _sim.Cacao : 0)}){(_sim.HasShield ? "   + Tamal (escudo)" : "")}", _hud);
-            var right = new GUIStyle(_hud) { alignment = TextAnchor.UpperRight };
-            GUI.Label(new Rect(Screen.width * 0.5f - pad, pad, Screen.width * 0.5f, lineH), $"Record: {_sim.BestScore}", right);
-
-            string msg = _sim.State switch
-            {
-                RunState.Ready => "¡Papi, salva a tu dueño!\nEstá atrapado en la pirámide\n\nToca = salto corto  |  Mantener = salto alto\nÁguila: no saltes",
-                RunState.Dead => (_newRecord ? "¡Nuevo récord!\n" : "Game Over\n")
-                    + $"{_sim.Score} puntos  -  {_sim.Cacao} monedas"
-                    + (_sim.CanRestart ? "\n\nToca para reintentar" : ""),
-                _ => null
-            };
-            if (msg != null) GUI.Label(new Rect(0, 0, Screen.width, Screen.height * 0.8f), msg, _center);
-
-            if (Debug.isDebugBuild)
-                GUI.Label(new Rect(pad, Screen.height - pad * 2.5f, Screen.width, pad * 2), $"{_fps:0} fps  vel {_sim.Speed:0.0}", _small);
+            if (paused && _menus != null) _menus.SetPaused(true);
         }
 
-        void BuildStyles()
+        void OnApplicationFocus(bool focused)
         {
-            var dark = new Color(0.12f, 0.1f, 0.08f);
-            _hud = new GUIStyle(GUI.skin.label) { fontSize = Mathf.Max(18, Screen.height / 18), fontStyle = FontStyle.Bold };
-            _hud.normal.textColor = dark;
-            _center = new GUIStyle(_hud) { alignment = TextAnchor.MiddleCenter, wordWrap = true };
-            _small = new GUIStyle(GUI.skin.label) { fontSize = Mathf.Max(12, Screen.height / 40) };
-            _small.normal.textColor = dark;
+            if (!focused && _menus != null) _menus.SetPaused(true);
+        }
+
+        void OnGUI()
+        {
+            if (_sim == null || !Debug.isDebugBuild) return;
+            if (_small == null)
+            {
+                _small = new GUIStyle(GUI.skin.label) { fontSize = Mathf.Max(12, Screen.height / 40) };
+                _small.normal.textColor = new Color(0.12f, 0.1f, 0.08f);
+            }
+            float pad = Screen.height * 0.03f;
+            GUI.Label(new Rect(pad, Screen.height - pad * 2.5f, Screen.width, pad * 2), $"{_fps:0} fps  vel {_sim.Speed:0.0}", _small);
         }
     }
 }
