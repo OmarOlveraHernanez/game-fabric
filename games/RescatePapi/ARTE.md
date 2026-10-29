@@ -63,7 +63,7 @@ Después del MVP: `aguila_jefe_0..1` (jefe), `piramide_meta`, íconos de la app,
 ## 5. Diseño de personajes
 - **Papi (protagonista):** chihuahua color **canela** con panza clara, **orejas enormes** con interior rosa, ojos grandes y brillantes, cola enroscada, **collar de jade**. Valiente y tierno. Debe leerse bien de perfil a tamaño pequeño.
 - **El dueño (la meta):** hombre joven mexicano, piel morena, pelo negro corto, ojos grandes. Playera **turquesa** con greca ocre, **paliacate rojo**, pantalón café, huaraches. Aparece atrapado pidiendo ayuda. **Evitar estereotipos** (nada de sombrero gigante, bigote caricaturesco ni sarape de cliché).
-- **Serpiente:** jade, cuerpo ondulado, penacho de plumas turquesa/ocre/grana (guiño a la serpiente emplumada, sin copiar a Quetzalcóatl).
+- **Serpiente:** **morada** con panza amarilla (resalta sobre la selva verde; se recolorea con `art-source/RescatePapi/ia/recolor.py`), cuerpo ondulado, penacho de plumas turquesa/ocre/grana (guiño a la serpiente emplumada, sin copiar a Quetzalcóatl).
 - **Jaguar:** ocre con manchas café oscuro en anillo, perfil de códice, colmillos visibles pero no aterrador.
 - **Águila real:** café con nuca dorada, pico amarillo, alas grandes de plumas escalonadas.
 

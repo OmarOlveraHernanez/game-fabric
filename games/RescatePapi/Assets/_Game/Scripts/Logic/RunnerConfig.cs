@@ -21,9 +21,9 @@ namespace RescatePapi.Logic
         public float JumpBufferTime = 0.12f;       // tap un poco antes de aterrizar cuenta
 
         // Velocidad / dificultad
-        public float BaseSpeed = 8f;
-        public float MaxSpeed = 18f;
-        public float Acceleration = 0.15f;         // u/s ganadas por segundo (~67 s a maxima)
+        public float BaseSpeed = 7.5f;        // con 7 el tap corto ya no libra la serpiente (ver GameDesignTests)
+        public float MaxSpeed = 14f;         // antes 18: a mas velocidad marea y no se aprecia el arte
+        public float Acceleration = 0.06f;         // u/s ganadas por segundo (~108 s a maxima; antes 0.15 = 67 s)
 
         // Generacion
         public float SpawnX = 14f;
