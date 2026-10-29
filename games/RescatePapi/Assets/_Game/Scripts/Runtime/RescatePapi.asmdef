@@ -4,7 +4,8 @@
     "references": [
         "GameFactory.Core",
         "RescatePapi.Logic",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
