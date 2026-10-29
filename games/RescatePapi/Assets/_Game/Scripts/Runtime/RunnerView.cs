@@ -35,7 +35,7 @@ namespace RescatePapi
         SpriteSet _art;
         System.Collections.Generic.List<ScrollingStrip> _strips;
         SpriteRenderer _player, _aura, _owner;
-        Sprite[] _artRun, _artJump, _artHit, _artOwner, _artSerpent, _artJaguar, _artEagle, _artCacao, _artPollito;
+        Sprite[] _artAura, _artRun, _artJump, _artHit, _artOwner, _artSerpent, _artJaguar, _artEagle, _artCacao, _artPollito;
         GUIStyle _hud, _center, _small;
         float _fps;
 
@@ -54,6 +54,7 @@ namespace RescatePapi
             _artEagle = art.Get("aguila");
             _artCacao = art.Get("cacao");
             _artPollito = art.Get("pollito");
+            _artAura = art.Get("aura");
             var c = sim.Config;
             _aura = CreateBox("ShieldAura", ShieldColor, 9);
             _aura.transform.localScale = new Vector3(c.PlayerWidth + 0.3f, c.PlayerHeight + 0.3f, 1f);
@@ -114,8 +115,17 @@ namespace RescatePapi
                 _owner.sprite = SpriteSet.Frame(_artOwner, t, 3f);
                 _owner.transform.position = new Vector3(5.5f, 0f, 0f);
             }
-            _aura.transform.position = playerPos + new Vector3(0f, -0.15f, 0f);
             _aura.enabled = _sim.HasShield;
+            if (_artAura != null)
+            {
+                // Aura dorada de "super guerrero" mientras dura el escudo del tamal: flamas que parpadean y laten
+                float pulse = 1f + 0.05f * Mathf.Sin(t * 9f);
+                _aura.sprite = SpriteSet.Frame(_artAura, t, AuraFps);
+                _aura.color = new Color(1f, 1f, 1f, 0.85f + 0.15f * Mathf.Sin(t * 13f));
+                _aura.transform.localScale = new Vector3(pulse, pulse, 1f);
+                _aura.transform.position = playerPos + new Vector3(0f, AuraYOffset, 0f);
+            }
+            else _aura.transform.position = playerPos + new Vector3(0f, -0.15f, 0f); // respaldo: cuadro de color
             // Parpadeo durante la invulnerabilidad tras perder el escudo
             _player.enabled = !_sim.IsInvulnerable || Mathf.FloorToInt(Time.time * 12f) % 2 == 0;
 
@@ -164,6 +174,8 @@ namespace RescatePapi
         const float JaguarRefHeight = 1.4f;   // el lienzo del jaguar (1.5 u) corresponde a una caja de 1.4 u de alto
         const float EagleArtMargin = 0.075f;  // margen inferior del lienzo del aguila
         const float PickupArtMargin = 0.025f;
+        const float AuraFps = 14f;            // cuadros por segundo del aura
+        const float AuraYOffset = -0.03f;     // el aura nace un poco debajo de los pies
         const float TamalBobHeight = 0.08f;   // unidades que sube/baja el tamal al flotar
         const float TamalBobSpeed = 4f;       // velocidad de la flotacion (radianes por segundo)
 
