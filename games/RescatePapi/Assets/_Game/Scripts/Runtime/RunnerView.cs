@@ -71,8 +71,14 @@ namespace RescatePapi
             sim.SetBestScore(_data.bestScore);
             _sounds = new GameSounds();
             var audio = AudioService.Instance;
-            sim.Started += () => { _newRecord = false; _menus.SetNewRecord(false); audio.PlaySfx(_sounds.Start, 0.6f); };
-            sim.Jump.Jumped += () => audio.PlaySfx(_sounds.Jump, 0.5f, Random.Range(0.95f, 1.05f));
+            sim.Started += () =>
+            {
+                _newRecord = false;
+                _menus.SetNewRecord(false);
+                audio.PlaySfx(_sounds.Start, 0.6f);
+                audio.PlayMusic(_sounds.MusicRun);
+            };
+            sim.Jump.Jumped += () => audio.PlaySfx(_sounds.Jump, 0.45f, Random.Range(0.95f, 1.05f));
             sim.Collected += p => audio.PlaySfx(p.Kind == PickupKind.Cacao ? _sounds.Cacao : _sounds.Pollito, 0.7f, Random.Range(0.97f, 1.1f));
             sim.ShieldLost += () => audio.PlaySfx(_sounds.ShieldLost, 0.8f);
             sim.EnemyAction += h => audio.PlaySfx(h.Kind == HazardKind.Eagle ? _sounds.EagleDive : _sounds.SerpentHop, 0.7f);
@@ -85,12 +91,14 @@ namespace RescatePapi
             _menus.RestartPressed += () => _sim.TryRestart();
             _menus.HomePressed += GoHome;
             _lastState = sim.State;
+            audio.PlayMusic(_sounds.MusicMenu);
         }
 
         static Sprite First(Sprite[] frames) => frames != null && frames.Length > 0 ? frames[0] : null;
 
         void OnDied()
         {
+            AudioService.Instance.StopMusic();
             AudioService.Instance.PlaySfx(_sounds.Die, 0.9f);
             _newRecord = _sim.Score > _data.bestScore;
             _menus.SetNewRecord(_newRecord);
@@ -104,6 +112,7 @@ namespace RescatePapi
             _menus.SetPaused(false);
             _sim.ResetRun();
             _lastState = _sim.State;
+            AudioService.Instance.PlayMusic(_sounds.MusicMenu);
         }
 
         void SaveRun()
