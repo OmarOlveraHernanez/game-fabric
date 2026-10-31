@@ -20,10 +20,12 @@ namespace RescatePapi.Logic
         public float MinJumpTime = 0.08f;          // el corte no aplica antes de esto
         public float JumpBufferTime = 0.12f;       // tap un poco antes de aterrizar cuenta
 
-        // Velocidad / dificultad
-        public float BaseSpeed = 7.5f;        // con 7 el tap corto ya no libra la serpiente (ver GameDesignTests)
-        public float MaxSpeed = 14f;         // antes 18: a mas velocidad marea y no se aprecia el arte
-        public float Acceleration = 0.06f;         // u/s ganadas por segundo (~108 s a maxima; antes 0.15 = 67 s)
+        // Velocidad: CONSTANTE (subirla marea y no deja ver el arte). La dificultad sube con el
+        // tiempo por los enemigos: mas seguidos y con comportamientos nuevos (ver Serpiente/Aguila).
+        public float BaseSpeed = 10.5f;              // con 7 el tap corto ya no libra la serpiente (ver GameDesignTests)
+        public float MaxSpeed = 10.5f;
+        public float Acceleration = 0f;            // 0 = velocidad fija
+        public float DifficultyRampTime = 120f;    // segundos hasta la dificultad maxima (nivel 1)
 
         // Generacion
         public float SpawnX = 14f;
@@ -38,6 +40,11 @@ namespace RescatePapi.Logic
         public float SerpentWeight = 1f;
         public float SerpentMinWidth = 1.2f, SerpentMaxWidth = 1.2f;
         public float SerpentMinHeight = 0.55f, SerpentMaxHeight = 0.55f;
+        // Serpiente saltarina: brinca justo al llegar al jugador y pasa POR ENCIMA (hay que NO saltar)
+        public float SerpentHopFromLevel = 0.3f;   // ~36 s
+        public float SerpentHopChance = 0.45f;
+        public float SerpentHopHeight = 1.5f;      // altura maxima de su base
+        public float SerpentHopDuration = 0.7f;    // segundos en el aire; el pico coincide con el jugador
 
         // Jaguar: alto; puede embestir (acelera al acercarse)
         public float JaguarWeight = 1f;
@@ -56,6 +63,12 @@ namespace RescatePapi.Logic
         public float EagleWidth = 1.4f;
         public float EagleThickness = 0.6f;
         public float EagleMinBottom = 1.05f, EagleMaxBottom = 1.3f; // tamano fijo; solo varia la altura de vuelo
+        // Aguila en picada: baja a ras de suelo antes de llegar (hay que SALTARLA)
+        public float EagleDiveFromLevel = 0.45f;   // ~54 s
+        public float EagleDiveChance = 0.45f;
+        public float EagleDiveDistance = 8f;       // borde izquierdo del aguila -> jugador al lanzarse (~0.9 s antes)
+        public float EagleDiveBottom = 0.15f;      // vuelo rasante
+        public float EagleDiveSpeed = 4f;          // u/s de bajada (y de subida al pasar)
 
         // Premios
         public float CacaoChancePerGap = 0.65f;

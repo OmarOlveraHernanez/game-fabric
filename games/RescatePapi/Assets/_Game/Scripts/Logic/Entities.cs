@@ -9,6 +9,10 @@ namespace RescatePapi.Logic
         public float X, Width, Bottom, Height;
         public bool WillCharge;   // jaguar que embestira
         public bool IsCharging;   // embistiendo ahora
+        public bool WillHop;      // serpiente que saltara por encima del jugador
+        public float HopTime = -1f; // segundos desde que empezo a saltar (<0 = aun no)
+        public bool WillDive;     // aguila que bajara en picada
+        public bool IsDiving;     // en picada ahora
         public float Left => X - Width * 0.5f;
         public float Right => X + Width * 0.5f;
         public float Top => Bottom + Height;
