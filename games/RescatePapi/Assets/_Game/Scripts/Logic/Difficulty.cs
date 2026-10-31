@@ -1,6 +1,6 @@
 namespace RescatePapi.Logic
 {
-    /// <summary>Curva de dificultad: la velocidad sube linealmente hasta un tope.</summary>
+    /// <summary>Curva de dificultad: velocidad (lineal hasta un tope; hoy fija) y nivel por tiempo.</summary>
     public static class Difficulty
     {
         public static float SpeedAt(RunnerConfig c, float elapsedSeconds)
@@ -9,8 +9,8 @@ namespace RescatePapi.Logic
             return s > c.MaxSpeed ? c.MaxSpeed : s;
         }
 
-        /// <summary>0 = facil (velocidad base), 1 = dificil (velocidad maxima).</summary>
-        public static float Level(RunnerConfig c, float speed) =>
-            MathUtil.Clamp01((speed - c.BaseSpeed) / (c.MaxSpeed - c.BaseSpeed));
+        /// <summary>0 = inicio, 1 = dificultad maxima (a los DifficultyRampTime segundos).</summary>
+        public static float LevelAt(RunnerConfig c, float elapsedSeconds) =>
+            c.DifficultyRampTime <= 0f ? 1f : MathUtil.Clamp01(elapsedSeconds / c.DifficultyRampTime);
     }
 }

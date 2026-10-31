@@ -13,6 +13,10 @@ namespace RescatePapi
         const float CameraHalfHeight = 4f;   // antes 5: se ve un 25% mas cerca
         const float CameraY = 2.8f;          // ve de y=-1.2 a y=6.8
         const float PlayerLeftMargin = 2f;   // unidades entre Papi y el borde izquierdo
+        // Parallax: fraccion de la velocidad del suelo con que se mueve cada capa. Bajos a proposito:
+        // capas lejanas casi quietas y selva lenta reducen el mareo (antes 0.08 y 0.3).
+        const float FarParallax = 0.03f;
+        const float MidParallax = 0.15f;
         public static readonly Color GroundColor = new Color(0.48f, 0.29f, 0.16f); // tierra
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -43,8 +47,8 @@ namespace RescatePapi
 
             // Fondos con parallax (si hay arte) y suelo
             var strips = new System.Collections.Generic.List<(ScrollingStrip strip, float factor)>();
-            AddStrip(strips, sprites, "fondo_lejano", -1f, 0.08f, -20, viewHalfWidth);
-            AddStrip(strips, sprites, "fondo_medio", -1f, 0.3f, -10, viewHalfWidth);
+            AddStrip(strips, sprites, "fondo_lejano", -1f, FarParallax, -20, viewHalfWidth);
+            AddStrip(strips, sprites, "fondo_medio", -1f, MidParallax, -10, viewHalfWidth);
             bool hasGround = AddStrip(strips, sprites, "suelo_tierra", -2f, 1f, 1, viewHalfWidth); // base en y=-2: el borde del pasto (512 px arriba) queda en y=0
             if (!hasGround)
             {

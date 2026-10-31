@@ -16,9 +16,8 @@ namespace RescatePapi.Logic
         }
 
         /// <summary>Distancia al siguiente enemigo (definida en tiempo para escalar con la velocidad).</summary>
-        public float NextGapDistance(float speed)
+        public float NextGapDistance(float speed, float level)
         {
-            float level = Difficulty.Level(_c, speed);
             float min = MathUtil.Lerp(_c.GapTimeMinEasy, _c.GapTimeMinHard, level);
             float max = MathUtil.Lerp(_c.GapTimeMaxEasy, _c.GapTimeMaxHard, level);
             return speed * MathUtil.Range(_rng, min, max);
@@ -35,15 +34,15 @@ namespace RescatePapi.Logic
             return HazardKind.Eagle;
         }
 
-        public Hazard CreateHazard(float x, float speed)
+        public Hazard CreateHazard(float x, float speed, float level)
         {
-            float level = Difficulty.Level(_c, speed);
             var h = new Hazard { Kind = PickKind(level), X = x };
             switch (h.Kind)
             {
                 case HazardKind.Serpent:
                     h.Width = MathUtil.Range(_rng, _c.SerpentMinWidth, _c.SerpentMaxWidth);
                     h.Height = MathUtil.Range(_rng, _c.SerpentMinHeight, _c.SerpentMaxHeight);
+                    h.WillHop = level >= _c.SerpentHopFromLevel && _rng.NextDouble() < _c.SerpentHopChance;
                     break;
                 case HazardKind.Jaguar:
                     float maxH = MathUtil.Lerp(_c.JaguarMaxHeightEasy, _c.JaguarMaxHeightHard, level);
@@ -58,6 +57,7 @@ namespace RescatePapi.Logic
                     h.Width = _c.EagleWidth;
                     h.Height = _c.EagleThickness;
                     h.Bottom = MathUtil.Range(_rng, _c.EagleMinBottom, _c.EagleMaxBottom);
+                    h.WillDive = level >= _c.EagleDiveFromLevel && _rng.NextDouble() < _c.EagleDiveChance;
                     break;
             }
             return h;

@@ -24,9 +24,11 @@ Su dueño quedó atrapado en lo alto de la pirámide, y **Papi, un chihuahua val
 |---|---|---|---|
 | Serpiente | Baja, en el suelo | Salto corto (o alto) | Inicio |
 | Jaguar | Alto; desde nivel 0.3 puede **embestir** (acelera al acercarse, se pone rojo) | Salto alto con buen timing | Inicio |
-| Águila | Vuela a media altura; pasa sobre ti si no saltas | **No saltar** | Nivel 0.15 (~10 s) |
+| Águila | Vuela a media altura; pasa sobre ti si no saltas | **No saltar** | Nivel 0.15 (~18 s) |
+| Serpiente saltarina | Rebota nerviosa; al llegar a Papi brinca y pasa **por encima** | **No saltar** | Nivel 0.3 (~36 s), 45 % de las serpientes |
+| Águila en picada | A ~0.9 s se lanza (se pone roja y chilla) y vuela a ras de suelo | **Salto alto** | Nivel 0.45 (~54 s), 45 % de las águilas |
 
-*Nivel* = 0 a velocidad base, 1 a velocidad máxima (~67 s).
+**Velocidad fija (10.5 u/s)**: subirla mareaba y no dejaba ver el arte. Contra el mareo: capas de fondo casi quietas (parallax 0.03 y 0.15) y suelo y selva con desenfoque horizontal (`art-source/RescatePapi/ia/calm.py`). La dificultad sube con el tiempo: *Nivel* = 0 al inicio, 1 a los 120 s (enemigos más seguidos, jaguares más altos y los comportamientos de arriba). Los dos comportamientos nuevos invierten la regla normal de su enemigo: piden atención, no reflejos.
 
 ## 5. Premios
 | Premio | Efecto | MVP |
@@ -55,9 +57,13 @@ Cada ~1000 m Papi llega al pie de una pirámide donde **el Águila Real** custod
 - Hueco mínimo entre enemigos > 1.25 × tiempo en el aire del salto alto.
 - El tap libra la serpiente más larga incluso a velocidad base; el jaguar más alto es librable aun embistiendo.
 - De pie pasas bajo el águila; cualquier salto la choca.
-- Bot con buena técnica: 300/300 partidas de 2 min.
+- La serpiente saltarina pasa por encima del jugador de pie con margen; saltarle encima choca.
+- El águila en picada hay que saltarla y deja >0.45 s para decidir desde que se lanza.
+- Bot con buena técnica (solo usa lo que se ve en pantalla): 300/300 partidas de 2.5 min.
 
 ## 10. Historial
+- 2026-10-31: velocidad 10.5; fondos más quietos y suaves contra el mareo.
+- 2026-10-29: velocidad fija (9) y dificultad por tiempo; serpiente saltarina y águila en picada.
 - 2026-10-20: cambio de historia — ahora **Papi corre** para salvar a su dueño atrapado en la pirámide (antes el dueño rescataba a Papi).
 
 ## 11. Pendientes

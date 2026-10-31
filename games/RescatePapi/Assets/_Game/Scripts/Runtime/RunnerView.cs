@@ -75,6 +75,7 @@ namespace RescatePapi
             sim.Jump.Jumped += () => audio.PlaySfx(_sounds.Jump, 0.5f, Random.Range(0.95f, 1.05f));
             sim.Collected += p => audio.PlaySfx(p.Kind == PickupKind.Cacao ? _sounds.Cacao : _sounds.Pollito, 0.7f, Random.Range(0.97f, 1.1f));
             sim.ShieldLost += () => audio.PlaySfx(_sounds.ShieldLost, 0.8f);
+            sim.EnemyAction += h => audio.PlaySfx(h.Kind == HazardKind.Eagle ? _sounds.EagleDive : _sounds.SerpentHop, 0.7f);
             sim.Died += OnDied;
 
             // Pantallas: inicio, HUD, pausa y fin de partida
@@ -185,9 +186,17 @@ namespace RescatePapi
                 // Jaguar: el arte esta dibujado para la caja de JaguarRefHeight; escala con su altura
                 float scale = h.Kind == HazardKind.Jaguar ? h.Height / JaguarRefHeight : 1f;
                 float yOffset = h.Kind == HazardKind.Eagle && frames != null ? -EagleArtMargin : 0f;
+                // Serpiente saltarina: antes de saltar rebota nerviosa (aviso: "a esta NO la saltes")
+                bool nervous = h.WillHop && h.HopTime < 0f;
+                if (nervous) yOffset += Mathf.Abs(Mathf.Sin(t * 14f + i)) * 0.12f;
                 v.transform.position = new Vector3(h.X, h.Bottom + yOffset, 0f);
-                ApplyArt(v, SpriteSet.Frame(frames, t + i * 0.37f, h.Kind == HazardKind.Eagle ? 6f : 5f), fallback, new Vector2(h.Width, h.Height), scale);
+                float fps = h.Kind == HazardKind.Eagle ? 6f : nervous ? 12f : 5f;
+                Sprite frame = h.IsDiving && frames != null && frames.Length > 1 ? frames[1]   // picada: alas pegadas
+                             : SpriteSet.Frame(frames, t + i * 0.37f, fps);
+                ApplyArt(v, frame, fallback, new Vector2(h.Width, h.Height), scale);
                 if (frames != null && h.Kind == HazardKind.Jaguar && h.IsCharging) v.color = new Color(1f, 0.65f, 0.6f); // tinte al embestir
+                if (frames != null && h.IsDiving) v.color = new Color(1f, 0.55f, 0.45f);                                 // aguila en picada: roja
+                if (nervous && frames != null) v.transform.localScale = new Vector3(1f, 1f + 0.08f * Mathf.Sin(t * 28f), 1f);
             }
 
             var pickups = _sim.Pickups;

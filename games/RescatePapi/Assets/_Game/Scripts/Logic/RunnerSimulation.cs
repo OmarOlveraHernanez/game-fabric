@@ -26,6 +26,8 @@ namespace RescatePapi.Logic
         public float Distance { get; private set; }
         public float Elapsed { get; private set; }
         public int Score => (int)(Distance * _c.ScorePerUnit);
+        /// <summary>0..1: sube con el tiempo de carrera y decide que enemigos y comportamientos aparecen.</summary>
+        public float Level => Difficulty.LevelAt(_c, Elapsed);
         public int BestScore { get; private set; }
         public int Cacao { get; private set; }               // cacao de esta carrera
         public bool HasShield { get; private set; }
@@ -38,6 +40,8 @@ namespace RescatePapi.Logic
         public event Action Died;
         public event Action<Pickup> Collected;
         public event Action ShieldLost;
+        /// <summary>Un enemigo empieza un comportamiento especial (la serpiente salta, el aguila se lanza en picada).</summary>
+        public event Action<Hazard> EnemyAction;
 
         public RunnerSimulation(RunnerConfig config, int seed)
         {
@@ -132,8 +136,39 @@ namespace RescatePapi.Logic
                 if (h.WillCharge && !h.IsCharging && h.Left - _c.PlayerX < _c.JaguarChargeDistance)
                     h.IsCharging = true;
                 h.X -= dx + (h.IsCharging ? _c.JaguarChargeSpeed * dt : 0f);
+                if (h.WillHop) UpdateHop(h, dt);
+                if (h.WillDive) UpdateDive(h, dt);
                 if (h.Right < _c.DespawnX) _hazards.RemoveAt(i);
             }
+        }
+
+        /// <summary>Serpiente: salta en arco de modo que el punto mas alto coincide con el jugador.</summary>
+        void UpdateHop(Hazard h, float dt)
+        {
+            if (h.HopTime < 0f)
+            {
+                float timeToPlayer = (h.X - _c.PlayerX) / Speed;
+                if (timeToPlayer > _c.SerpentHopDuration * 0.5f) return;
+                h.HopTime = 0f;
+                EnemyAction?.Invoke(h);
+            }
+            h.HopTime += dt;
+            float u = Math.Min(1f, h.HopTime / _c.SerpentHopDuration);
+            h.Bottom = 4f * _c.SerpentHopHeight * u * (1f - u);
+        }
+
+        /// <summary>Aguila: a cierta distancia baja a ras de suelo; despues de pasar al jugador vuelve a subir.</summary>
+        void UpdateDive(Hazard h, float dt)
+        {
+            if (!h.IsDiving)
+            {
+                if (h.Left - _c.PlayerX > _c.EagleDiveDistance) return;
+                h.IsDiving = true;
+                EnemyAction?.Invoke(h);
+            }
+            bool passed = h.Right < _c.PlayerX - _c.PlayerWidth;
+            h.Bottom = passed ? h.Bottom + _c.EagleDiveSpeed * dt
+                              : Math.Max(_c.EagleDiveBottom, h.Bottom - _c.EagleDiveSpeed * dt);
         }
 
         void MovePickups(float dx)
@@ -150,9 +185,10 @@ namespace RescatePapi.Logic
             _distanceToNextSpawn -= dx;
             if (_distanceToNextSpawn > 0f) return;
 
-            var h = _gen.CreateHazard(_c.SpawnX, Speed);
+            float level = Level;
+            var h = _gen.CreateHazard(_c.SpawnX, Speed, level);
             _hazards.Add(h);
-            float gap = _gen.NextGapDistance(Speed);
+            float gap = _gen.NextGapDistance(Speed, level);
             bool allowPollito = !HasShield && !_pickups.Exists(p => p.Kind == PickupKind.Pollito);
             _gen.CreatePickups(_pickups, h, gap, allowPollito);
             _distanceToNextSpawn += gap;

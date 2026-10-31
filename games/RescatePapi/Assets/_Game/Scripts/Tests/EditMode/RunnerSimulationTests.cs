@@ -86,12 +86,33 @@ namespace RescatePapi.Tests
         }
 
         [Test]
-        public void Speed_IncreasesOverTime_AndIsCapped()
+        public void Speed_IsConstant_AndLevelRisesOverTime_ToOne()
         {
             var c = new RunnerConfig();
             Assert.AreEqual(c.BaseSpeed, Difficulty.SpeedAt(c, 0f), 0.001f);
-            Assert.That(Difficulty.SpeedAt(c, 30f), Is.GreaterThan(c.BaseSpeed));
-            Assert.AreEqual(c.MaxSpeed, Difficulty.SpeedAt(c, 10000f), 0.001f);
+            Assert.AreEqual(c.BaseSpeed, Difficulty.SpeedAt(c, 300f), 0.001f, "la velocidad no debe subir (marea)");
+            Assert.AreEqual(0f, Difficulty.LevelAt(c, 0f), 0.001f);
+            Assert.That(Difficulty.LevelAt(c, c.DifficultyRampTime * 0.5f), Is.EqualTo(0.5f).Within(0.001f));
+            Assert.AreEqual(1f, Difficulty.LevelAt(c, 10000f), 0.001f);
+        }
+
+        [Test]
+        public void SpecialBehaviors_OnlyAppear_FromTheirLevel()
+        {
+            var c = new RunnerConfig { EagleFromLevel = 0f, SerpentHopChance = 1f, EagleDiveChance = 1f };
+            var gen = new SpawnGenerator(c, 9);
+            for (int i = 0; i < 300; i++)
+            {
+                var h = gen.CreateHazard(14f, c.BaseSpeed, 0f);
+                Assert.IsFalse(h.WillHop || h.WillDive, "al inicio no hay comportamientos especiales");
+            }
+            bool hop = false, dive = false;
+            for (int i = 0; i < 300; i++)
+            {
+                var h = gen.CreateHazard(14f, c.BaseSpeed, 1f);
+                hop |= h.WillHop; dive |= h.WillDive;
+            }
+            Assert.IsTrue(hop && dive);
         }
 
         [Test]
