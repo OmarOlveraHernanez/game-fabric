@@ -85,5 +85,10 @@ namespace RescatePapi.Logic
         // Puntuacion y flujo
         public float ScorePerUnit = 1f;            // 1 punto por unidad recorrida
         public float RestartDelay = 0.5f;          // evita reiniciar por accidente
+
+        // Continuar tras morir (video con premio)
+        public int MaxRevivesPerRun = 1;
+        public float ReviveInvulnerableTime = 2f;  // parpadea y no choca
+        public float ReviveClearDistance = 8f;     // quita los enemigos cercanos para no morir al instante
     }
 }

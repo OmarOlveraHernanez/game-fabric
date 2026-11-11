@@ -44,7 +44,11 @@ Cada ~1000 m Papi llega al pie de una pirámide donde **el Águila Real** custod
 
 ## 7. Progresión y monetización
 - **Cacao** acumulado → **tienda de trajes para Papi** (guerrero águila, guerrero jaguar, collares…). *Después del MVP.*
-- Anuncios: **rewarded** (continuar tras morir / duplicar cacao) + **interstitial** cada N muertes con tiempo mínimo. Sin banner en partida.
+- Anuncios (AdMob, `Runtime/Ads/AdsService.cs`), todos fuera de la carrera:
+  - **Continuar (video con premio)**: al morir, 1 vez por carrera; conserva puntos y monedas, quita los enemigos cercanos y da 2 s de invulnerabilidad.
+  - **Monedas x2 (video con premio)**: en el fin de partida, si juntaste monedas.
+  - **Intersticial**: al salir del fin de partida, después de 2 partidas de la sesión, luego cada 2 partidas y con mínimo 60 s entre anuncios (`AdPolicy`). Un video con premio reinicia la cuenta.
+  - Sin banner. En editor y builds de desarrollo se usan los ID de prueba de Google; los reales solo en el AAB de lanzamiento.
 - Público **13+**.
 
 ## 8. Estilo visual y audio

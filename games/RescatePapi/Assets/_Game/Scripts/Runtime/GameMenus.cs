@@ -14,13 +14,16 @@ namespace RescatePapi
     /// </summary>
     public sealed class GameMenus : MonoBehaviour
     {
-        public event Action PlayPressed, RestartPressed, HomePressed;
+        public event Action PlayPressed, RestartPressed, HomePressed, ContinuePressed, DoubleCoinsPressed;
+        /// <summary>Si hay que ofrecer los videos con premio en el fin de partida (los decide RunnerView).</summary>
+        public Func<bool> CanOfferContinue = () => false, CanOfferDoubleCoins = () => false;
         public bool Paused { get; private set; }
 
         RunnerSimulation _sim;
         GameData _data;
         AudioClip _click;
-        GameObject _title, _hud, _pause, _over, _pauseButton, _shield;
+        GameObject _title, _hud, _pause, _over, _pauseButton, _shield, _continueButton, _doubleButton;
+        bool _coinsDoubled;
         RectTransform _playButton, _pauseCard, _overCard;
         Text _titleStats, _score, _coins, _record, _overTitle, _overStats;
         readonly Text[] _soundLabels = new Text[2];
@@ -46,6 +49,16 @@ namespace RescatePapi
         }
 
         public void SetNewRecord(bool value) => _newRecord = value;
+
+        /// <summary>Nueva carrera: se olvida el "x2" de la anterior.</summary>
+        public void ResetRunOffers() => _coinsDoubled = false;
+
+        /// <summary>El jugador vio el video: sus monedas de esta carrera valen doble.</summary>
+        public void MarkCoinsDoubled()
+        {
+            _coinsDoubled = true;
+            if (_over.activeSelf) FillGameOver();
+        }
 
         public void SetPaused(bool paused)
         {
@@ -134,16 +147,27 @@ namespace RescatePapi
             var rt = UiKit.Stretch(UiKit.NewRect("FinPartida", canvas));
             _over = rt.gameObject;
             UiKit.Stretch(UiKit.Panel(rt, "Oscuro", new Color(0f, 0f, 0f, 0.45f), false, true).rectTransform);
-            _overCard = Card(rt, new Vector2(900f, 740f));
+            _overCard = Card(rt, new Vector2(920f, 780f));
 
-            _overTitle = UiKit.Label(_overCard, "", 96, UiKit.Grana);
-            UiKit.Place((RectTransform)_overTitle.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 265f), new Vector2(860f, 130f));
-            _overStats = UiKit.Label(_overCard, "", 54, UiKit.Ink, TextAnchor.MiddleCenter, false);
-            UiKit.Place((RectTransform)_overStats.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 75f), new Vector2(800f, 240f));
-            var again = UiKit.MakeButton(_overCard, "Otra vez", UiKit.Gold, UiKit.Ink, 70, () => { Click(); RestartPressed?.Invoke(); });
-            UiKit.Place((RectTransform)again.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, -150f), new Vector2(580f, 150f));
-            var home = UiKit.MakeButton(_overCard, "Inicio", UiKit.Turq, Color.white, 50, () => { Click(); HomePressed?.Invoke(); });
-            UiKit.Place((RectTransform)home.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, -290f), new Vector2(580f, 110f));
+            _overTitle = UiKit.Label(_overCard, "", 90, UiKit.Grana);
+            UiKit.Place((RectTransform)_overTitle.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 300f), new Vector2(880f, 120f));
+            _overStats = UiKit.Label(_overCard, "", 48, UiKit.Ink, TextAnchor.MiddleCenter, false);
+            UiKit.Place((RectTransform)_overStats.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 160f), new Vector2(840f, 170f));
+
+            // Videos con premio (opcionales): solo aparecen si hay un anuncio listo
+            var cont = UiKit.MakeButton(_overCard, "Continuar\n(ver video)", new Color(0.24f, 0.56f, 0.31f), Color.white, 40,
+                                        () => { Click(); ContinuePressed?.Invoke(); });
+            _continueButton = cont.gameObject;
+            UiKit.Place((RectTransform)cont.transform, new Vector2(0.5f, 0.5f), new Vector2(-215f, -5f), new Vector2(410f, 120f));
+            var dbl = UiKit.MakeButton(_overCard, "Monedas x2\n(ver video)", new Color(0.24f, 0.56f, 0.31f), Color.white, 40,
+                                       () => { Click(); DoubleCoinsPressed?.Invoke(); });
+            _doubleButton = dbl.gameObject;
+            UiKit.Place((RectTransform)dbl.transform, new Vector2(0.5f, 0.5f), new Vector2(215f, -5f), new Vector2(410f, 120f));
+
+            var again = UiKit.MakeButton(_overCard, "Otra vez", UiKit.Gold, UiKit.Ink, 66, () => { Click(); RestartPressed?.Invoke(); });
+            UiKit.Place((RectTransform)again.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, -170f), new Vector2(580f, 130f));
+            var home = UiKit.MakeButton(_overCard, "Inicio", UiKit.Turq, Color.white, 48, () => { Click(); HomePressed?.Invoke(); });
+            UiKit.Place((RectTransform)home.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, -310f), new Vector2(580f, 100f));
         }
 
         static RectTransform Card(Transform parent, Vector2 size)
@@ -170,6 +194,11 @@ namespace RescatePapi
             Show(_pauseButton, state == RunState.Running && !Paused);
             if (Show(_pause, pauseVisible) && pauseVisible) _cardTime = 0f;
             if (Show(_over, overVisible) && overVisible) { _cardTime = 0f; FillGameOver(); }
+            if (overVisible)
+            {
+                Show(_continueButton, CanOfferContinue());
+                Show(_doubleButton, !_coinsDoubled && CanOfferDoubleCoins());
+            }
 
             RefreshTexts(state);
             Animate();
@@ -207,7 +236,8 @@ namespace RescatePapi
         {
             _overTitle.text = _newRecord ? "¡Nuevo récord!" : "¡Ay, Papi!";
             _overTitle.color = _newRecord ? UiKit.Gold : UiKit.Grana;
-            _overStats.text = $"Puntos: {_sim.Score}\nMonedas: +{_sim.Cacao}\nRécord: {_data.bestScore}";
+            string coins = _coinsDoubled ? $"+{_sim.Cacao * 2}  (x2)" : $"+{_sim.Cacao}";
+            _overStats.text = $"Puntos: {_sim.Score}\nMonedas: {coins}\nRécord: {_data.bestScore}";
         }
 
         void Animate()

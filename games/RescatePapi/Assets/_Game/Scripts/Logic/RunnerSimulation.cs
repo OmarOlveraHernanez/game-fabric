@@ -33,6 +33,8 @@ namespace RescatePapi.Logic
         public bool HasShield { get; private set; }
         public bool IsInvulnerable => _invulnerable > 0f;
         public bool CanRestart => State == RunState.Dead && _deadTime >= _c.RestartDelay;
+        public int Revives { get; private set; }
+        public bool CanRevive => State == RunState.Dead && Revives < _c.MaxRevivesPerRun;
         public IReadOnlyList<Hazard> Hazards => _hazards;
         public IReadOnlyList<Pickup> Pickups => _pickups;
 
@@ -42,6 +44,8 @@ namespace RescatePapi.Logic
         public event Action ShieldLost;
         /// <summary>Un enemigo empieza un comportamiento especial (la serpiente salta, el aguila se lanza en picada).</summary>
         public event Action<Hazard> EnemyAction;
+        /// <summary>La carrera continua tras morir (el jugador vio un video con premio).</summary>
+        public event Action Revived;
 
         public RunnerSimulation(RunnerConfig config, int seed)
         {
@@ -64,6 +68,7 @@ namespace RescatePapi.Logic
             HasShield = false;
             _invulnerable = 0f;
             _deadTime = 0f;
+            Revives = 0;
             _hazards.Clear();
             _pickups.Clear();
             Jump.Reset();
@@ -85,6 +90,22 @@ namespace RescatePapi.Logic
             ResetRun();
             State = RunState.Running;
             Started?.Invoke();
+            return true;
+        }
+
+        /// <summary>
+        /// Sigue la misma carrera tras morir (puntos y monedas se conservan): quita los enemigos cercanos
+        /// y da invulnerabilidad un momento. Una vez por carrera (MaxRevivesPerRun).
+        /// </summary>
+        public bool Revive()
+        {
+            if (!CanRevive) return false;
+            Revives++;
+            State = RunState.Running;
+            _invulnerable = _c.ReviveInvulnerableTime;
+            _hazards.RemoveAll(h => h.Left < _c.PlayerX + _c.ReviveClearDistance);
+            Jump.Reset();
+            Revived?.Invoke();
             return true;
         }
 
