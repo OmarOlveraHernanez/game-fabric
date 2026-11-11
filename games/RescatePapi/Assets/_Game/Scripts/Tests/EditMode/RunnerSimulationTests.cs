@@ -170,6 +170,64 @@ namespace RescatePapi.Tests
             new RunnerConfig { SerpentWeight = 0f, JaguarWeight = 0f, EagleWeight = 1f, EagleFromLevel = 0f };
 
         [Test]
+        public void Revive_ContinuesSameRun_OncePerRun()
+        {
+            var c = new RunnerConfig();
+            var sim = Running(2, c);
+            for (int i = 0; i < 60 * 60 && sim.State == RunState.Running; i++) sim.Tick(Dt, false, false);
+            Assert.AreEqual(RunState.Dead, sim.State);
+            int score = sim.Score, coins = sim.Cacao;
+            Assert.IsTrue(sim.Revive());
+            Assert.AreEqual(RunState.Running, sim.State);
+            Assert.AreEqual(score, sim.Score, "los puntos se conservan");
+            Assert.AreEqual(coins, sim.Cacao, "las monedas se conservan");
+            Assert.IsTrue(sim.IsInvulnerable);
+            Assert.IsFalse(sim.Hazards.Any(h => h.Left < c.PlayerX + c.ReviveClearDistance), "sin enemigos encima");
+
+            sim.Tick(Dt, false, false);
+            Assert.AreEqual(RunState.Running, sim.State, "no muere al instante");
+            for (int i = 0; i < 60 * 60 && sim.State == RunState.Running; i++) sim.Tick(Dt, false, false);
+            Assert.AreEqual(RunState.Dead, sim.State);
+            Assert.IsFalse(sim.CanRevive, "solo una vez por carrera");
+            Assert.IsFalse(sim.Revive());
+        }
+
+        [Test]
+        public void Revive_IsAvailableAgain_InANewRun()
+        {
+            var c = new RunnerConfig();
+            var sim = Running(3, c);
+            for (int i = 0; i < 60 * 60 && sim.State == RunState.Running; i++) sim.Tick(Dt, false, false);
+            sim.Revive();
+            for (int i = 0; i < 60 * 60 && sim.State == RunState.Running; i++) sim.Tick(Dt, false, false);
+            for (float t = 0; t <= c.RestartDelay + Dt; t += Dt) sim.Tick(Dt, false, false);
+            Assert.IsTrue(sim.TryRestart());
+            for (int i = 0; i < 60 * 60 && sim.State == RunState.Running; i++) sim.Tick(Dt, false, false);
+            Assert.IsTrue(sim.CanRevive);
+        }
+
+        [Test]
+        public void AdPolicy_IsModerate()
+        {
+            var p = new AdPolicy();
+            Assert.That(p.EveryRuns, Is.GreaterThan(1), "nunca un intersticial en cada partida");
+            Assert.That(p.MinSecondsBetween, Is.GreaterThan(44.9f), "nunca mas seguido que esto");
+            float t = 0f;
+            for (int run = 1; run < p.FirstAfterRuns; run++) { p.RunFinished(); t += 60f; Assert.IsFalse(p.ShouldShowInterstitial(t), $"partida {run}: aun no"); }
+            p.RunFinished(); t += 60f;
+            Assert.IsTrue(p.ShouldShowInterstitial(t), $"tras {p.FirstAfterRuns} partidas");
+            p.AdShown(t);
+            for (int i = 0; i < p.EveryRuns; i++) p.RunFinished();
+            t += p.MinSecondsBetween * 0.5f;
+            Assert.IsFalse(p.ShouldShowInterstitial(t), "partidas muy rapidas: espera el tiempo minimo");
+            t += p.MinSecondsBetween;
+            Assert.IsTrue(p.ShouldShowInterstitial(t));
+            p.AdShown(t);                       // p. ej. vio un video con premio
+            p.RunFinished(); t += 200f;
+            Assert.IsFalse(p.ShouldShowInterstitial(t), "un video con premio reinicia la cuenta");
+        }
+
+        [Test]
         public void SetBestScore_OnlyRaises()
         {
             var sim = new RunnerSimulation(new RunnerConfig(), 4);

@@ -7,14 +7,14 @@ param(
     [string]$Title,
     [string]$AppId,
     [ValidateSet("landscape", "portrait")][string]$Orientation = "landscape",
-    [string]$Company = "Omar Olvera"
+    [string]$Company = "Ollinix Games"
 )
 . "$PSScriptRoot\_common.ps1"
 
 if ($Name -notmatch '^[A-Z][A-Za-z0-9]{2,40}$') { Fail "-Name debe ser PascalCase sin espacios ni acentos (ej. RescatePapi)" }
 if (-not $Title) { $Title = ($Name -creplace '([a-z0-9])([A-Z])', '$1 $2') }
-if (-not $AppId) { $AppId = "com.omarolvera." + $Name.ToLower() }
-if ($AppId -notmatch '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$') { Fail "-AppId invalido: $AppId (ej. com.omarolvera.rescatepapi)" }
+if (-not $AppId) { $AppId = "com.ollinixgames." + $Name.ToLower() }
+if ($AppId -notmatch '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$') { Fail "-AppId invalido: $AppId (ej. com.ollinixgames.rescatepapi)" }
 
 $template = Join-Path $Script:RepoRoot "templates\android-2d"
 $dest = Join-Path $Script:RepoRoot "games\$Name"

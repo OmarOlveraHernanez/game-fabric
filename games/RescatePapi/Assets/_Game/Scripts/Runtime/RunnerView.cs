@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using GameFactory.Core.Audio;
 using GameFactory.Core.Controls;
 using GameFactory.Core.Save;
+using RescatePapi.Ads;
 using RescatePapi.Logic;
 using RescatePapi.UI;
 using UnityEngine;
@@ -38,9 +39,14 @@ namespace RescatePapi
         SpriteRenderer _player, _aura, _owner;
         Sprite[] _artAura, _artRun, _artJump, _artHit, _artOwner, _artSerpent, _artJaguar, _artEagle, _artCacao, _artPollito;
         GameMenus _menus;
+        AdsService _ads;
+        readonly AdPolicy _adPolicy = new AdPolicy();
+        int _coinsSaved;               // monedas de esta carrera ya sumadas al total (por si continua tras morir)
+        bool _runCounted, _coinsDoubled;
         bool _pressOnUi;               // el toque empezo sobre un boton: no cuenta como salto
         RunState _lastState;
         GUIStyle _small;
+        bool _hideDebug;               // F3 o tocar con 3 dedos: esconde la linea de diagnostico (para capturas)
         float _fps;
 
         public void Init(RunnerSimulation sim, Sprite sprite, SpriteSet art, System.Collections.Generic.List<ScrollingStrip> strips)
@@ -74,7 +80,11 @@ namespace RescatePapi
             sim.Started += () =>
             {
                 _newRecord = false;
+                _coinsSaved = 0;
+                _runCounted = false;
+                _coinsDoubled = false;
                 _menus.SetNewRecord(false);
+                _menus.ResetRunOffers();
                 audio.PlaySfx(_sounds.Start, 0.6f);
                 audio.PlayMusic(_sounds.MusicRun);
             };
@@ -83,13 +93,33 @@ namespace RescatePapi
             sim.ShieldLost += () => audio.PlaySfx(_sounds.ShieldLost, 0.8f);
             sim.EnemyAction += h => audio.PlaySfx(h.Kind == HazardKind.Eagle ? _sounds.EagleDive : _sounds.SerpentHop, 0.7f);
             sim.Died += OnDied;
+            sim.Revived += () => { audio.PlaySfx(_sounds.Start, 0.6f); audio.PlayMusic(_sounds.MusicRun); };
 
             // Pantallas: inicio, HUD, pausa y fin de partida
             _menus = new GameObject("Menus").AddComponent<GameMenus>();
             _menus.Init(sim, _data, First(_artCacao), First(_artPollito), _sounds.Click);
             _menus.PlayPressed += () => _sim.Begin();
-            _menus.RestartPressed += () => _sim.TryRestart();
-            _menus.HomePressed += GoHome;
+            _menus.RestartPressed += () => AfterRunAd(() => _sim.TryRestart());
+            _menus.HomePressed += () => { if (_sim.State == RunState.Dead) AfterRunAd(GoHome); else GoHome(); };
+
+            // Anuncios (AdMob): videos con premio opcionales e intersticial con moderacion (AdPolicy)
+            _ads = new AdsService();
+            _ads.Initialize();
+            _menus.CanOfferContinue = () => _sim.CanRevive && !_coinsDoubled && _ads.IsRewardedReady(RewardedSlot.Continue);
+            _menus.CanOfferDoubleCoins = () => _sim.Cacao > 0 && _ads.IsRewardedReady(RewardedSlot.DoubleCoins);
+            _menus.ContinuePressed += () => _ads.ShowRewarded(RewardedSlot.Continue, () =>
+            {
+                _adPolicy.AdShown(Time.realtimeSinceStartup);
+                _sim.Revive();
+            }, null);
+            _menus.DoubleCoinsPressed += () => _ads.ShowRewarded(RewardedSlot.DoubleCoins, () =>
+            {
+                _adPolicy.AdShown(Time.realtimeSinceStartup);
+                _coinsDoubled = true;
+                _data.cacaoTotal += _sim.Cacao;        // el premio: las monedas de la carrera otra vez
+                Persist();
+                _menus.MarkCoinsDoubled();
+            }, null);
             _lastState = sim.State;
             audio.PlayMusic(_sounds.MusicMenu);
         }
@@ -105,10 +135,21 @@ namespace RescatePapi
             SaveRun();
         }
 
+        /// <summary>
+        /// Al salir del fin de partida: cuenta la carrera y, si toca (AdPolicy), muestra el intersticial antes de seguir.
+        /// </summary>
+        void AfterRunAd(System.Action next)
+        {
+            _adPolicy.RunFinished();
+            float now = Time.realtimeSinceStartup;
+            if (_adPolicy.ShouldShowInterstitial(now) && _ads.ShowInterstitial(next)) _adPolicy.AdShown(now);
+            else next();
+        }
+
         /// <summary>Volver a la pantalla de inicio (desde pausa o desde el fin de partida).</summary>
         void GoHome()
         {
-            if (_sim.State == RunState.Running) SaveRun(); // carrera abandonada: se guardan monedas y record
+            if (_sim.State == RunState.Running) { SaveRun(); _adPolicy.RunFinished(); } // carrera abandonada
             _menus.SetPaused(false);
             _sim.ResetRun();
             _lastState = _sim.State;
@@ -119,8 +160,14 @@ namespace RescatePapi
         {
             _data.bestScore = Mathf.Max(_data.bestScore, _sim.Score);
             _sim.SetBestScore(_data.bestScore);
-            _data.cacaoTotal += _sim.Cacao;
-            _data.runs++;
+            _data.cacaoTotal += _sim.Cacao - _coinsSaved;  // solo lo nuevo (si continuo tras morir ya se sumo una parte)
+            _coinsSaved = _sim.Cacao;
+            if (!_runCounted) { _data.runs++; _runCounted = true; }
+            Persist();
+        }
+
+        void Persist()
+        {
             try { _saveFile.Save(_data); }
             catch (System.Exception e) { Debug.LogWarning($"[RescatePapi] No se pudo guardar: {e.Message}"); }
         }
@@ -130,6 +177,7 @@ namespace RescatePapi
             if (_sim == null) return;
             float dt = Mathf.Min(Time.deltaTime, 1f / 30f); // evita saltos grandes si hay tirones
             _input.Poll();
+            ToggleDebugOverlay();
             bool pressed = _input.PressedThisFrame, held = _input.Held;
             if (!held) _pressOnUi = false;
             if (pressed && UiKit.TryGetPressedPointer(out var pointer) && UiKit.IsOverUI(pointer)) _pressOnUi = true;
@@ -277,16 +325,36 @@ namespace RescatePapi
             if (!focused && _menus != null) _menus.SetPaused(true);
         }
 
+        void ToggleDebugOverlay()
+        {
+            if (!Debug.isDebugBuild) return;
+            var kb = UnityEngine.InputSystem.Keyboard.current;
+            bool toggle = kb != null && kb.f3Key.wasPressedThisFrame;
+            var ts = UnityEngine.InputSystem.Touchscreen.current;
+            if (ts != null)
+            {
+                int down = 0, began = 0;
+                foreach (var t in ts.touches)
+                {
+                    if (t.press.isPressed) down++;
+                    if (t.press.wasPressedThisFrame) began++;
+                }
+                toggle |= down == 3 && began > 0;
+            }
+            if (toggle) _hideDebug = !_hideDebug;
+        }
+
         void OnGUI()
         {
-            if (_sim == null || !Debug.isDebugBuild) return;
+            if (_sim == null || !Debug.isDebugBuild || _hideDebug) return;
             if (_small == null)
             {
                 _small = new GUIStyle(GUI.skin.label) { fontSize = Mathf.Max(12, Screen.height / 40) };
                 _small.normal.textColor = new Color(0.12f, 0.1f, 0.08f);
             }
             float pad = Screen.height * 0.03f;
-            GUI.Label(new Rect(pad, Screen.height - pad * 2.5f, Screen.width, pad * 2), $"{_fps:0} fps  vel {_sim.Speed:0.0}", _small);
+            string ads = _ads == null ? "-" : $"{_ads.Status}  [cont {(_ads.IsRewardedReady(RewardedSlot.Continue) ? "si" : "no")}, x2 {(_ads.IsRewardedReady(RewardedSlot.DoubleCoins) ? "si" : "no")}, inter {(_ads.IsInterstitialReady ? "si" : "no")}]";
+            GUI.Label(new Rect(pad, Screen.height - pad * 2.5f, Screen.width, pad * 2), $"{_fps:0} fps  vel {_sim.Speed:0.0}  anuncios: {ads}  intersticial: {_adPolicy.Describe(Time.realtimeSinceStartup)}", _small);
         }
     }
 }
