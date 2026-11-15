@@ -1,0 +1,15 @@
+{
+    "name": "Tacos",
+    "rootNamespace": "Tacos",
+    "references": [
+        "GameFactory.Core",
+        "Tacos.Logic",
+        "Unity.InputSystem",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "autoReferenced": true,
+    "noEngineReferences": false
+}
