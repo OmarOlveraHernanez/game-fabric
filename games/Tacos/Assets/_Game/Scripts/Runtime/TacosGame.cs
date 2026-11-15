@@ -10,8 +10,8 @@ using UnityEngine.UI;
 namespace Tacos
 {
     /// <summary>
-    /// Toda la interfaz del prototipo T1 (cuadros de colores, sin arte final): menu de turnos y taqueros,
-    /// HUD, pista, clientes, la barra del puesto y la pantalla final. Solo dibuja la simulacion y
+    /// Toda la interfaz del prototipo (cuadros de colores, sin arte final): mapa de misiones, taqueros,
+    /// tienda de mejoras, HUD, pista, clientes, la barra del puesto y la pantalla final. Solo dibuja la simulacion y
     /// le manda comandos; las reglas viven en Tacos.Logic.
     /// Medidas: pixeles de referencia con 1080 de alto; lo horizontal va en fracciones del ancho
     /// porque el ancho cambia mucho entre tablet (4:3) y telefono (20:9).
@@ -29,21 +29,28 @@ namespace Tacos
 
         SaveFile<TacosData> _saveFile;
         TacosData _data;
-        int _turno;
+        int _mission;
+        CampaignProgress P => _data.progress;
+        static LevelConfig[] Missions => LevelConfig.Zona1;
         TaqueroDef _taq = TaqueroDef.Guero;
         KitchenSimulation _sim;
 
-        RectTransform _root, _menu, _game, _end, _counter;
+        RectTransform _root, _menu, _game, _end, _shop, _counter;
         Text _hudTurno, _hudTiempo, _hudMonedas, _hudTaquero, _hint, _toast;
         GameObject _hintBar, _toastPanel;
         Image[] _hudStars;
         float _toastTime;
 
-        // menu
-        readonly List<Button> _turnoButtons = new List<Button>();
-        readonly List<Text> _turnoTexts = new List<Text>();
-        readonly List<Image[]> _turnoStars = new List<Image[]>();
+        // menu (mapa de misiones)
+        readonly List<Button> _missionButtons = new List<Button>();
+        readonly List<Text> _missionNames = new List<Text>();
+        readonly List<Image[]> _missionStars = new List<Image[]>();
         readonly List<Button> _taqButtons = new List<Button>();
+        Text _menuWallet, _menuDesc;
+
+        // tienda de mejoras
+        readonly List<Button> _shopButtons = new List<Button>();
+        Text _shopWallet;
 
         // clientes
         readonly Button[] _cards = new Button[3];
@@ -69,8 +76,16 @@ namespace Tacos
         {
             _saveFile = new SaveFile<TacosData>("tacos");
             _data = _saveFile.Load();
-            if (_data.bestStars == null || _data.bestStars.Length != LevelConfig.Turnos.Length)
-                _data.bestStars = new int[LevelConfig.Turnos.Length];
+            if (_data.progress == null) _data.progress = new CampaignProgress();
+            _data.progress.Normalize(Missions.Length, UpgradeDef.All.Length);
+            if (_data.version < 2)
+            {
+                // Guardado del prototipo T1: sus 3 turnos son las misiones 1 a 3
+                if (_data.bestStars != null)
+                    for (int i = 0; i < _data.bestStars.Length && i < 3; i++) _data.progress.stars[i] = Math.Max(_data.progress.stars[i], _data.bestStars[i]);
+                _data.version = 2;
+                _saveFile.Save(_data);
+            }
             _taq = Array.Find(TaqueroDef.Starters, t => t.Id == _data.taquero) ?? TaqueroDef.Guero;
 
             var canvas = UiKit.CreateCanvas("TacosCanvas", 10);
@@ -81,6 +96,7 @@ namespace Tacos
 
             BuildGame();
             BuildMenu();
+            BuildShop();
             BuildEnd();
             ShowMenu();
         }
@@ -109,20 +125,20 @@ namespace Tacos
 
             // HUD
             var hud = Box(UiKit.NewRect("HUD", _game), 0f, 1f, 14f, 70f, 40f);
-            _hudTurno = UiKit.Label(hud, "", 34, UiKit.Maiz, TextAnchor.MiddleLeft);
-            BoxOf(_hudTurno, 0f, 0.14f, 0f, 70f);
-            _hudTiempo = UiKit.Label(hud, "", 38, UiKit.Cream, TextAnchor.MiddleLeft);
-            BoxOf(_hudTiempo, 0.14f, 0.3f, 0f, 70f);
-            _hudMonedas = UiKit.Label(hud, "", 38, UiKit.Cream, TextAnchor.MiddleLeft);
-            BoxOf(_hudMonedas, 0.3f, 0.48f, 0f, 70f);
+            _hudTurno = UiKit.Label(hud, "", 30, UiKit.Maiz, TextAnchor.MiddleLeft);
+            BoxOf(_hudTurno, 0f, 0.22f, 0f, 70f);
+            _hudTiempo = UiKit.Label(hud, "", 36, UiKit.Cream, TextAnchor.MiddleLeft);
+            BoxOf(_hudTiempo, 0.22f, 0.35f, 0f, 70f);
+            _hudMonedas = UiKit.Label(hud, "", 36, UiKit.Cream, TextAnchor.MiddleLeft);
+            BoxOf(_hudMonedas, 0.35f, 0.5f, 0f, 70f);
             _hudStars = new Image[3];
             for (int i = 0; i < 3; i++)
             {
                 _hudStars[i] = UiKit.Star(hud, "Estrella");
-                BoxOf(_hudStars[i], 0.48f + i * 0.03f, 0.51f + i * 0.03f, 10f, 50f);
+                BoxOf(_hudStars[i], 0.5f + i * 0.03f, 0.53f + i * 0.03f, 10f, 50f);
             }
             _hudTaquero = UiKit.Label(hud, "", 26, UiKit.Muted, TextAnchor.MiddleRight);
-            BoxOf(_hudTaquero, 0.58f, 0.92f, 0f, 70f);
+            BoxOf(_hudTaquero, 0.6f, 0.92f, 0f, 70f);
             var menuBtn = UiKit.MakeButton(hud, "Menu", "Menú", UiKit.Panel2, UiKit.Cream, 28, ShowMenu);
             BoxOf(menuBtn, 0.93f, 1f, 4f, 62f);
 
@@ -204,7 +220,8 @@ namespace Tacos
                 {
                     int s = i;
                     var b = UiKit.MakeButton(col, "Plancha " + i, "", UiKit.Panel2, UiKit.Cream, 28, () => Do(Command.TakeMeat(s)));
-                    BoxOf(b, i * 0.5f, i * 0.5f + 0.5f, 176f, 200f, pad);
+                    float w = 1f / _sim.Grill.Length;
+                    BoxOf(b, i * w, (i + 1) * w, 176f, 200f, pad * 0.7f);
                     _grillSlots.Add(b);
                 }
             }
@@ -215,7 +232,8 @@ namespace Tacos
                 {
                     int p = i;
                     var b = UiKit.MakeButton(col, "Plato " + i, "", UiKit.Plato, UiKit.Ink, 28, () => Do(Command.SelectPlate(p)));
-                    BoxOf(b, i * 0.5f, i * 0.5f + 0.5f, 52f, 330f, pad);
+                    float w = 1f / _sim.Plates.Length;
+                    BoxOf(b, i * w, (i + 1) * w, 52f, 330f, pad * 0.7f);
                     var t = b.GetComponentInChildren<Text>();
                     t.alignment = TextAnchor.UpperCenter;
                     _plateButtons.Add(b);
@@ -252,122 +270,188 @@ namespace Tacos
         {
             _menu = UiKit.Stretch(UiKit.NewRect("Menu", _root));
             UiKit.Stretch((RectTransform)UiKit.Panel(_menu, "Velo", UiKit.Night, false, true).transform);
-            var title = UiKit.Label(_menu, "¡A TAQUEAR!", 96, UiKit.Maiz);
-            BoxOf(title, 0f, 1f, 40f, 120f);
-            var sub = UiKit.Label(_menu, "Prototipo T1 · cuadros de colores, sin arte final. Empieza por el turno 1: te guía paso a paso.", 30, UiKit.Muted);
-            BoxOf(sub, 0.08f, 0.92f, 160f, 60f);
+            var title = UiKit.Label(_menu, "¡A TAQUEAR!", 84, UiKit.Maiz);
+            BoxOf(title, 0f, 1f, 24f, 104f);
+            var sub = UiKit.Label(_menu, "Zona 1 · Puesto callejero", 32, UiKit.Muted);
+            BoxOf(sub, 0f, 1f, 126f, 44f);
+            _menuWallet = UiKit.Label(_menu, "", 30, UiKit.Cream, TextAnchor.MiddleRight);
+            BoxOf(_menuWallet, 0.5f, 0.96f, 186f, 44f);
+            var lt = UiKit.Label(_menu, "MISIONES", 26, UiKit.Muted, TextAnchor.MiddleLeft);
+            BoxOf(lt, 0.04f, 0.5f, 186f, 44f);
 
-            var lt = UiKit.Label(_menu, "TURNO", 26, UiKit.Muted, TextAnchor.MiddleLeft);
-            BoxOf(lt, 0.06f, 0.94f, 236f, 40f);
-            for (int i = 0; i < LevelConfig.Turnos.Length; i++)
+            const float x0 = 0.04f, cell = 0.92f / 6f;
+            for (int i = 0; i < Missions.Length; i++)
             {
-                int t = i;
-                var lvl = LevelConfig.Turnos[i];
-                var b = UiKit.MakeButton(_menu, "Turno " + i, null, UiKit.Panel1, UiKit.Cream, 30, () => { _turno = t; RefreshMenu(); });
-                BoxOf(b, 0.06f + i * 0.293f, 0.06f + (i + 1) * 0.293f, 280f, 200f, 24f);
-                var name = UiKit.Label(b.transform, lvl.Name, 40, UiKit.Cream, TextAnchor.UpperLeft);
-                Box((RectTransform)name.transform, 0f, 1f, 18f, 50f, 40f);
-                var desc = UiKit.Label(b.transform, lvl.Description, 26, UiKit.Muted, TextAnchor.UpperLeft);
-                Box((RectTransform)desc.transform, 0f, 1f, 72f, 70f, 40f);
-                _turnoTexts.Add(desc);
+                int m = i;
+                float x = x0 + (i % 6) * cell;
+                var b = UiKit.MakeButton(_menu, "Mision " + i, null, UiKit.Panel1, UiKit.Cream, 28, () => { _mission = m; RefreshMenu(); });
+                BoxOf(b, x, x + cell, 240f + (i / 6) * 166f, 152f, 18f);
+                var num = UiKit.Label(b.transform, (i + 1).ToString(), 40, UiKit.Maiz, TextAnchor.UpperLeft);
+                Box((RectTransform)num.transform, 0f, 1f, 10f, 48f, 32f);
+                var name = UiKit.Label(b.transform, Missions[i].Name, 26, UiKit.Cream, TextAnchor.UpperLeft);
+                Box((RectTransform)name.transform, 0f, 1f, 56f, 56f, 32f);
+                _missionNames.Add(name);
                 var stars = new Image[3];
                 for (int s = 0; s < 3; s++)
                 {
                     stars[s] = UiKit.Star(b.transform, "Estrella");
-                    UiKit.TopLeft((RectTransform)stars[s].transform, 20f + s * 48f, 146f, 40f, 40f);
+                    UiKit.TopLeft((RectTransform)stars[s].transform, 16f + s * 38f, 112f, 32f, 32f);
                 }
-                _turnoStars.Add(stars);
-                _turnoButtons.Add(b);
+                _missionStars.Add(stars);
+                _missionButtons.Add(b);
             }
 
-            var lq = UiKit.Label(_menu, "TAQUERO", 26, UiKit.Muted, TextAnchor.MiddleLeft);
-            BoxOf(lq, 0.06f, 0.94f, 500f, 40f);
+            _menuDesc = UiKit.Label(_menu, "", 30, UiKit.Cream);
+            BoxOf(_menuDesc, 0.04f, 0.96f, 576f, 50f);
+
             for (int i = 0; i < TaqueroDef.Starters.Length; i++)
             {
                 var taq = TaqueroDef.Starters[i];
                 var b = UiKit.MakeButton(_menu, "Taquero " + taq.Id, null, UiKit.Panel1, UiKit.Cream, 30,
                     () => { _taq = taq; RefreshMenu(); });
-                BoxOf(b, 0.06f + i * 0.293f, 0.06f + (i + 1) * 0.293f, 544f, 170f, 24f);
-                var name = UiKit.Label(b.transform, taq.Name, 40, UiKit.Cream, TextAnchor.UpperLeft);
-                Box((RectTransform)name.transform, 0f, 1f, 18f, 50f, 40f);
-                var perk = UiKit.Label(b.transform, taq.Perk, 26, UiKit.Muted, TextAnchor.UpperLeft);
-                Box((RectTransform)perk.transform, 0f, 1f, 74f, 80f, 40f);
+                BoxOf(b, 0.04f + i * 0.307f, 0.04f + (i + 1) * 0.307f, 640f, 120f, 24f);
+                var name = UiKit.Label(b.transform, taq.Name, 34, UiKit.Cream, TextAnchor.UpperLeft);
+                Box((RectTransform)name.transform, 0f, 1f, 12f, 44f, 36f);
+                var perk = UiKit.Label(b.transform, taq.Perk, 24, UiKit.Muted, TextAnchor.UpperLeft);
+                Box((RectTransform)perk.transform, 0f, 1f, 60f, 56f, 36f);
                 _taqButtons.Add(b);
             }
 
-            var go = UiKit.MakeButton(_menu, "Empezar", "Empezar turno", UiKit.Chile, Color.white, 46, StartTurn);
-            BoxOf(go, 0.33f, 0.67f, 760f, 120f);
+            var shop = UiKit.MakeButton(_menu, "AbrirMejoras", "Mejoras de cocina", UiKit.Panel2, UiKit.Maiz, 38, ShowShop);
+            BoxOf(shop, 0.14f, 0.46f, 800f, 116f, 24f);
+            var go = UiKit.MakeButton(_menu, "Empezar", "Empezar misión", UiKit.Chile, Color.white, 44, StartTurn);
+            BoxOf(go, 0.5f, 0.86f, 800f, 116f, 24f);
+        }
+
+        void BuildShop()
+        {
+            _shop = UiKit.Stretch(UiKit.NewRect("Mejoras", _root));
+            UiKit.Stretch((RectTransform)UiKit.Panel(_shop, "Velo", UiKit.Night, false, true).transform);
+            var title = UiKit.Label(_shop, "MEJORAS DE COCINA", 72, UiKit.Maiz);
+            BoxOf(title, 0f, 1f, 40f, 100f);
+            _shopWallet = UiKit.Label(_shop, "", 36, UiKit.Cream);
+            BoxOf(_shopWallet, 0f, 1f, 150f, 50f);
+            var info = UiKit.Label(_shop, "Las monedas de cada misión se juntan aquí, aunque no ganes estrellas.", 26, UiKit.Muted);
+            BoxOf(info, 0.05f, 0.95f, 204f, 40f);
+            for (int i = 0; i < UpgradeDef.All.Length; i++)
+            {
+                var def = UpgradeDef.All[i];
+                float x = 0.05f + (i % 2) * 0.45f;
+                var card = UiKit.Panel(_shop, "Mejora " + def.Id, UiKit.Panel1, true, false);
+                BoxOf(card, x, x + 0.45f, 270f + (i / 2) * 270f, 250f, 28f);
+                var name = UiKit.Label(card.transform, def.Name, 40, UiKit.Cream, TextAnchor.UpperLeft);
+                Box((RectTransform)name.transform, 0f, 1f, 20f, 50f, 48f);
+                var desc = UiKit.Label(card.transform, def.Description, 28, UiKit.Muted, TextAnchor.UpperLeft);
+                Box((RectTransform)desc.transform, 0f, 1f, 76f, 70f, 48f);
+                var u = def.Id;
+                var buy = UiKit.MakeButton(card.transform, "Comprar", "", UiKit.Maiz, UiKit.Ink, 32, () =>
+                {
+                    if (P.Buy(u)) { _saveFile.Save(_data); RefreshShop(); }
+                });
+                BoxOf(buy, 0.45f, 1f, 160f, 72f, 48f);
+                _shopButtons.Add(buy);
+            }
+            var back = UiKit.MakeButton(_shop, "Volver", "Volver", UiKit.Panel2, UiKit.Cream, 40, ShowMenu);
+            BoxOf(back, 0.35f, 0.65f, 840f, 110f);
         }
 
         void BuildEnd()
         {
             _end = UiKit.Stretch(UiKit.NewRect("Fin", _root));
             UiKit.Stretch((RectTransform)UiKit.Panel(_end, "Velo", new Color(0.08f, 0.07f, 0.12f, 0.94f), false, true).transform);
-            _endTitle = UiKit.Label(_end, "", 90, UiKit.Maiz);
-            BoxOf(_endTitle, 0f, 1f, 110f, 120f);
+            _endTitle = UiKit.Label(_end, "", 84, UiKit.Maiz);
+            BoxOf(_endTitle, 0f, 1f, 90f, 120f);
             _endStars = new Image[3];
             for (int i = 0; i < 3; i++)
             {
                 _endStars[i] = UiKit.Star(_end, "Estrella");
-                BoxOf(_endStars[i], 0.38f + i * 0.08f, 0.46f + i * 0.08f, 250f, 120f);
+                BoxOf(_endStars[i], 0.38f + i * 0.08f, 0.46f + i * 0.08f, 225f, 120f);
             }
-            _endStats = UiKit.Label(_end, "", 44, UiKit.Cream);
-            BoxOf(_endStats, 0.1f, 0.9f, 400f, 70f);
+            _endStats = UiKit.Label(_end, "", 42, UiKit.Cream);
+            BoxOf(_endStats, 0.08f, 0.92f, 370f, 64f);
             _endInfo = UiKit.Label(_end, "", 30, UiKit.Muted);
-            BoxOf(_endInfo, 0.1f, 0.9f, 480f, 110f);
-            _nextButton = UiKit.MakeButton(_end, "Siguiente", "Siguiente turno", UiKit.Chile, Color.white, 40, () =>
+            BoxOf(_endInfo, 0.08f, 0.92f, 446f, 160f);
+            _nextButton = UiKit.MakeButton(_end, "Siguiente", "Siguiente misión", UiKit.Chile, Color.white, 40, () =>
             {
-                _turno = Mathf.Min(_turno + 1, LevelConfig.Turnos.Length - 1);
+                _mission = Mathf.Min(_mission + 1, Missions.Length - 1);
                 StartTurn();
             });
             BoxOf(_nextButton, 0.16f, 0.44f, 650f, 110f, 24f);
             var again = UiKit.MakeButton(_end, "Repetir", "Repetir", UiKit.Panel2, UiKit.Cream, 40, StartTurn);
             BoxOf(again, 0.44f, 0.64f, 650f, 110f, 24f);
-            var menu = UiKit.MakeButton(_end, "MenuFin", "Menú", UiKit.Panel2, UiKit.Cream, 40, ShowMenu);
+            var menu = UiKit.MakeButton(_end, "MenuFin", "Misiones", UiKit.Panel2, UiKit.Cream, 40, ShowMenu);
             BoxOf(menu, 0.64f, 0.84f, 650f, 110f, 24f);
         }
 
         // =============== flujo ===============
 
-        bool Unlocked(int turno) => turno == 0 || _data.bestStars[turno - 1] > 0;
+        void ShowScreen(RectTransform screen)
+        {
+            _menu.gameObject.SetActive(screen == _menu);
+            _shop.gameObject.SetActive(screen == _shop);
+            _game.gameObject.SetActive(screen == _game);
+            _end.gameObject.SetActive(false);
+        }
 
         void ShowMenu()
         {
             _sim = null;
-            _menu.gameObject.SetActive(true);
-            _game.gameObject.SetActive(false);
-            _end.gameObject.SetActive(false);
-            if (!Unlocked(_turno)) _turno = 0;
+            ShowScreen(_menu);
+            if (!P.IsUnlocked(_mission)) _mission = 0;
             RefreshMenu();
+        }
+
+        void ShowShop()
+        {
+            ShowScreen(_shop);
+            RefreshShop();
         }
 
         void RefreshMenu()
         {
-            for (int i = 0; i < _turnoButtons.Count; i++)
+            _menuWallet.text = $"Monedas {P.wallet}   ·   Estrellas {P.TotalStars}/{Missions.Length * 3}";
+            for (int i = 0; i < _missionButtons.Count; i++)
             {
-                bool open = Unlocked(i);
-                _turnoButtons[i].interactable = open;
-                _turnoTexts[i].text = open ? LevelConfig.Turnos[i].Description : "Gana 1 estrella en el turno anterior.";
-                UiKit.Highlight(_turnoButtons[i], UiKit.Turq, i == _turno);
-                for (int s = 0; s < 3; s++) _turnoStars[i][s].color = s < _data.bestStars[i] ? UiKit.Maiz : UiKit.Line;
+                bool open = P.IsUnlocked(i);
+                _missionButtons[i].interactable = open;
+                _missionNames[i].text = open ? Missions[i].Name : "Bloqueada";
+                UiKit.Highlight(_missionButtons[i], UiKit.Turq, i == _mission);
+                for (int s = 0; s < 3; s++) _missionStars[i][s].color = s < P.stars[i] ? UiKit.Maiz : UiKit.Line;
             }
+            var lvl = Missions[_mission];
+            _menuDesc.text = $"<color={UiKit.Hex(UiKit.Maiz)}>Misión {_mission + 1}: {lvl.Name}.</color> {lvl.Description}";
             for (int i = 0; i < _taqButtons.Count; i++)
                 UiKit.Highlight(_taqButtons[i], UiKit.Turq, TaqueroDef.Starters[i] == _taq);
         }
 
+        void RefreshShop()
+        {
+            _shopWallet.text = $"Tienes {P.wallet} monedas";
+            for (int i = 0; i < _shopButtons.Count; i++)
+            {
+                var def = UpgradeDef.All[i];
+                var label = _shopButtons[i].GetComponentInChildren<Text>();
+                bool owned = P.Owns(def.Id);
+                _shopButtons[i].interactable = !owned && P.CanBuy(def.Id);
+                label.text = owned ? "Comprada" : $"Comprar · {def.Price}";
+            }
+        }
+
+        static string RuleText(MissionRule r) =>
+            r == MissionRule.NoErrors ? "cero errores" : r == MissionRule.NoBurn ? "sin quemar nada" : null;
+
         void StartTurn()
         {
-            if (!Unlocked(_turno)) return;
+            if (!P.IsUnlocked(_mission)) return;
             _data.taquero = _taq.Id;
-            _sim = new KitchenSimulation(LevelConfig.Turnos[_turno], _taq, Environment.TickCount);
+            _sim = new KitchenSimulation(Missions[_mission], _taq, Environment.TickCount, P.BuildRules());
             _sim.OrderServed += (slot, pay, tip) => Toast($"+{pay} monedas" + (tip >= 4 ? " · ¡propinota!" : ""), UiKit.Limon);
             _sim.OrderWrong += slot => Toast("¡Eso no pedí!", UiKit.Chile);
             _sim.CustomerLeft += slot => Toast("Un cliente se cansó de esperar", UiKit.Chile);
+            _sim.ItemBurned += () => Toast("¡Se quemó!", UiKit.Chile);
             _sim.Finished += EndTurn;
             BuildCounter(_sim.Level);
-            _menu.gameObject.SetActive(false);
-            _end.gameObject.SetActive(false);
-            _game.gameObject.SetActive(true);
+            ShowScreen(_game);
             _hintBar.SetActive(_sim.Level.Hints);
             _toastTime = 0f;
             _toastPanel.SetActive(false);
@@ -377,16 +461,20 @@ namespace Tacos
         void EndTurn()
         {
             int stars = _sim.Stars;
-            if (stars > _data.bestStars[_turno]) _data.bestStars[_turno] = stars;
+            P.Record(_mission, stars, _sim.Coins);
             _saveFile.Save(_data);
-            _endTitle.text = stars == 3 ? "¡Taquero legendario!" : stars > 0 ? "¡Buen turno!" : "Se acabó el turno";
+            _endTitle.text = stars == 3 ? "¡Taquero legendario!" : stars > 0 ? "¡Buen turno!" : _sim.RuleBroken ? "Se rompió la regla" : "Se acabó el turno";
             for (int i = 0; i < 3; i++) _endStars[i].color = i < stars ? UiKit.Maiz : UiKit.Line;
             _endStats.text = $"Servidos {_sim.Served}   ·   Fallados {_sim.Failed}   ·   Monedas {_sim.Coins}";
             var st = _sim.Level.Stars;
-            bool last = _turno >= LevelConfig.Turnos.Length - 1;
-            _endInfo.text = $"Estrellas a las {st[0]}, {st[1]} y {st[2]} monedas.\n" +
-                (last ? "Es el último turno del prototipo." : stars > 0 ? "Ya puedes pasar al siguiente turno." : "Necesitas 1 estrella para abrir el siguiente turno.");
-            _nextButton.gameObject.SetActive(!last && stars > 0);
+            bool last = _mission >= Missions.Length - 1;
+            string rule = RuleText(_sim.Level.Rule);
+            _endInfo.text = $"Estrellas a las {st[0]}, {st[1]} y {st[2]} monedas." +
+                (_sim.RuleBroken ? $" Esta misión pedía {rule}." : "") +
+                $"\nGanaste {_sim.Coins} monedas para mejoras · ahora tienes {P.wallet}.\n" +
+                (last ? (stars > 0 ? "¡Terminaste la zona 1!" : "Es la última misión de la zona.")
+                      : P.IsUnlocked(_mission + 1) ? "Ya puedes pasar a la siguiente misión." : "Necesitas 1 estrella para abrir la siguiente misión.");
+            _nextButton.gameObject.SetActive(!last && P.IsUnlocked(_mission + 1));
             _end.gameObject.SetActive(true);
         }
 
@@ -454,12 +542,14 @@ namespace Tacos
             if (_sim == null) return;
             var s = _sim;
             var lvl = s.Level;
-            _hudTurno.text = lvl.Name;
+            _hudTurno.text = $"{_mission + 1}. {lvl.Name}";
             int left = Mathf.CeilToInt(s.TimeLeft);
             _hudTiempo.text = $"Tiempo {left / 60}:{left % 60:00}";
             _hudMonedas.text = $"Monedas {s.Coins}";
             for (int i = 0; i < 3; i++) _hudStars[i].color = i < s.Stars ? UiKit.Maiz : UiKit.Line;
-            _hudTaquero.text = s.Taquero.Name + " · " + s.Taquero.Perk;
+            string rule = RuleText(lvl.Rule);
+            _hudTaquero.text = rule == null ? s.Taquero.Name + " · " + s.Taquero.Perk
+                : $"Regla: {rule}  " + (s.RuleBroken ? $"<color={UiKit.Hex(UiKit.Chile)}>ROTA</color>" : $"<color={UiKit.Hex(UiKit.Limon)}>bien</color>");
 
             for (int i = 0; i < 3; i++)
             {
@@ -472,7 +562,8 @@ namespace Tacos
                 if (c == null) { _cardName[i].text = "Esperando cliente…"; _cardOrder[i].text = ""; UiKit.Highlight(_cards[i], UiKit.Limon, false); continue; }
                 bool ready = s.HasPlateFor(i);
                 _cardAvatar[i].color = Avatares[c.Id % Avatares.Length];
-                _cardName[i].text = Nombres[(c.Id * 7) % Nombres.Length] + (ready ? $"  <color={UiKit.Hex(UiKit.Limon)}>¡Entrégale!</color>" : " quiere:");
+                string rush = c.Rush ? $"  <color={UiKit.Hex(UiKit.Chile)}>¡CON PRISA!</color>" : "";
+                _cardName[i].text = Nombres[(c.Id * 7) % Nombres.Length] + rush + (ready ? $"  <color={UiKit.Hex(UiKit.Limon)}>¡Entrégale!</color>" : "");
                 _cardOrder[i].text = OrderText(c.Order.Meat, c.Order.Extras, false);
                 float r = c.PatienceRatio;
                 _cardBarRt[i].anchorMax = new Vector2(r, 1f);

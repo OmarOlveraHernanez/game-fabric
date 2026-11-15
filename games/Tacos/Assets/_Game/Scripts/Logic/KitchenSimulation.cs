@@ -11,6 +11,7 @@ namespace Tacos.Logic
         public Order Order;
         public float Patience;
         public float MaxPatience;
+        public bool Rush; // apurado: menos paciencia, propina doble
         public float PatienceRatio => MaxPatience <= 0f ? 0f : Math.Max(0f, Patience / MaxPatience);
     }
 
@@ -32,11 +33,13 @@ namespace Tacos.Logic
         public TaqueroDef Taquero { get; }
 
         public float Time { get; private set; }
-        public float TimeLeft => Math.Max(0f, Rules.Duration - Time);
+        public float TimeLeft => Math.Max(0f, Level.Duration - Time);
         public bool IsFinished { get; private set; }
         public int Coins { get; private set; }
         public int Served { get; private set; }
         public int Failed { get; private set; }
+        /// <summary>Tortillas o carnes que se quemaron (aunque no se hayan tirado).</summary>
+        public int Burned { get; private set; }
         public int SelectedPlate { get; private set; }
 
         public readonly Customer[] Customers;
@@ -45,7 +48,10 @@ namespace Tacos.Logic
         public readonly Plate[] Plates;
 
         public float CookTime => Rules.CookTime * Taquero.CookMultiplier;
-        public int Stars => StarsFor(Coins);
+        /// <summary>La regla especial de la mision se rompio: la mision no da estrellas.</summary>
+        public bool RuleBroken =>
+            (Level.Rule == MissionRule.NoErrors && Failed > 0) || (Level.Rule == MissionRule.NoBurn && Burned > 0);
+        public int Stars => RuleBroken ? 0 : StarsFor(Coins);
 
         /// <summary>Llego un cliente (lugar).</summary>
         public event Action<int> CustomerArrived;
@@ -55,6 +61,8 @@ namespace Tacos.Logic
         public event Action<int> OrderWrong;
         /// <summary>Un cliente se fue por esperar demasiado (lugar).</summary>
         public event Action<int> CustomerLeft;
+        /// <summary>Algo se quemo en el comal o la plancha.</summary>
+        public event Action ItemBurned;
         public event Action Finished;
 
         public KitchenSimulation(LevelConfig level, TaqueroDef taquero, int seed, KitchenRules rules = null)
@@ -101,8 +109,20 @@ namespace Tacos.Logic
         {
             if (IsFinished || dt <= 0f) return;
             Time += dt;
-            foreach (var t in Comal) if (t != null) t.Age += dt;
-            foreach (var m in Grill) if (m != null) m.Age += dt;
+            foreach (var t in Comal)
+            {
+                if (t == null) continue;
+                bool was = t.Age >= Rules.TortillaBurnTime;
+                t.Age += dt;
+                if (!was && t.Age >= Rules.TortillaBurnTime) { Burned++; ItemBurned?.Invoke(); }
+            }
+            foreach (var m in Grill)
+            {
+                if (m == null) continue;
+                bool was = m.Age >= Rules.MeatBurnTime;
+                m.Age += dt;
+                if (!was && m.Age >= Rules.MeatBurnTime) { Burned++; ItemBurned?.Invoke(); }
+            }
 
             for (int i = 0; i < Customers.Length; i++)
             {
@@ -124,7 +144,7 @@ namespace Tacos.Logic
                 _spawnTimer = NextGap();
             }
 
-            if (Time >= Rules.Duration)
+            if (Time >= Level.Duration)
             {
                 IsFinished = true;
                 Finished?.Invoke();
@@ -139,15 +159,17 @@ namespace Tacos.Logic
             for (int i = 0; i < Level.MaxCustomers && i < Customers.Length; i++)
                 if (Customers[i] == null) { slot = i; break; }
             if (slot < 0) return;
-            float max = Level.Patience * Taquero.PatienceMultiplier * (Time > Level.LateAfter ? Level.LatePatienceFactor : 1f);
-            Customers[slot] = new Customer { Id = _nextId++, Order = NewOrder(), Patience = max, MaxPatience = max };
+            bool rush = Level.RushChance > 0f && _rng.NextDouble() < Level.RushChance;
+            float max = Level.Patience * Taquero.PatienceMultiplier * Rules.PatienceMultiplier
+                        * (Time > Level.LateAfter ? Level.LatePatienceFactor : 1f) * (rush ? Rules.RushPatienceFactor : 1f);
+            Customers[slot] = new Customer { Id = _nextId++, Order = NewOrder(), Patience = max, MaxPatience = max, Rush = rush };
             CustomerArrived?.Invoke(slot);
         }
 
-        /// <summary>Pedido al azar: carne + de 1 a MaxExtras extras, a lo mas una salsa y pina solo con pastor.</summary>
+        /// <summary>Pedido al azar: carne + de MinExtras a MaxExtras extras, a lo mas una salsa y pina solo con pastor.</summary>
         public Order NewOrder()
         {
-            var meat = _rng.NextDouble() < 0.55 ? Meat.Pastor : Meat.Asada;
+            var meat = Level.OnlyMeat != Meat.None ? Level.OnlyMeat : _rng.NextDouble() < 0.55 ? Meat.Pastor : Meat.Asada;
             var pool = new List<Extra> { Extra.Cebolla, Extra.Cilantro, Extra.Limon };
             if (meat == Meat.Pastor) pool.Add(Extra.Pina);
             pool.Add(_rng.NextDouble() < 0.5 ? Extra.SalsaVerde : Extra.SalsaRoja);
@@ -157,7 +179,8 @@ namespace Tacos.Logic
                 var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
             }
             int max = Math.Max(1, Math.Min(Level.MaxExtras, pool.Count));
-            int k = 1 + _rng.Next(max);
+            int min = Math.Max(1, Math.Min(Level.MinExtras, max));
+            int k = min + _rng.Next(max - min + 1);
             var extras = Extra.None;
             for (int i = 0; i < k; i++) extras |= pool[i];
             return new Order(meat, extras);
@@ -273,7 +296,8 @@ namespace Tacos.Logic
             _spawnTimer = Math.Min(_spawnTimer, Level.GapMin);
             if (correct)
             {
-                int tip = (int)Math.Round(Rules.MaxTip * c.PatienceRatio, MidpointRounding.AwayFromZero);
+                int tip = (int)Math.Round(Rules.MaxTip * c.PatienceRatio, MidpointRounding.AwayFromZero)
+                          * (c.Rush ? Rules.RushTipMultiplier : 1);
                 int pay = Rules.BasePay + Rules.PayPerExtra * Extras.Count(c.Order.Extras) + tip;
                 Coins += pay;
                 Served++;
