@@ -13,7 +13,7 @@ Identificador: `com.ollinixgames.rescatepapi` (permanente) · Versión 1.0.0 (ve
 - [ ] **Variables de firma** en Windows (una vez): `GF_KEYSTORE_PATH`, `GF_KEYSTORE_PASS`, `GF_KEY_ALIAS`, `GF_KEY_PASS`.
 - [ ] **AAB de lanzamiento:** `powershell -ExecutionPolicy Bypass -File tools\build.ps1 -Mode Release` → `builds\RescatePapi\RescatePapi-1.0.0-release.aab`
 - [ ] **Capturas** (4 a 8, horizontales) desde un APK de prueba nuevo; con 3 dedos se esconde la línea de diagnóstico.
-- [ ] **Política de privacidad** publicada en Google Sites (copiar `privacidad.html`).
+- [x] **Política de privacidad** publicada: https://sites.google.com/view/rescate-papi-privacidad/p%C3%A1gina-principal
 
 ## B. En Play Console
 1. **Crear app:** nombre "Rescate Papi", idioma Español (Latinoamérica), Juego, Gratis, aceptar declaraciones.
