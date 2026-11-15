@@ -53,7 +53,7 @@ Corredor sin fin, Casual, Un toque, Animales
 - **Público objetivo:** 13 años o más (13-15, 16-17, 18+). No dirigido a niños.
 - **Clasificación de contenido:** violencia caricaturesca leve (los animales solo chocan con Papi, sin sangre). Probablemente "Apto para todo público" o "7+" según el cuestionario IARC.
 - **Seguridad de los datos:** la app no recopila datos propios; el SDK de anuncios de Google (AdMob) recopila el ID de publicidad, datos aproximados del dispositivo e interacciones con anuncios para mostrar anuncios, medir y prevenir fraude. Se transfieren cifrados. El récord y las monedas se guardan solo en el dispositivo.
-- **Política de privacidad:** URL pública de privacidad.html (ver más abajo).
+- **Política de privacidad:** https://sites.google.com/view/rescate-papi-privacidad/p%C3%A1gina-principal
 
 ## Desarrollador
 - Nombre: **Ollinix Games**

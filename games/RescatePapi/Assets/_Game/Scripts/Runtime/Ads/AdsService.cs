@@ -30,6 +30,20 @@ namespace RescatePapi.Ads
         bool _initialized;
         // Reintentos si una carga falla (sin red, sin anuncio disponible): 5 s, 10 s, 20 s... hasta 60 s
         int _failsContinue, _failsDouble, _failsInterstitial;
+        string _errContinue = "", _errDouble = "", _errInterstitial = "";
+
+        /// <summary>Ultimo error de carga de cada anuncio (diagnostico; vacio si cargo bien).</summary>
+        public string Errors
+        {
+            get
+            {
+                var parts = new System.Collections.Generic.List<string>();
+                if (_errContinue.Length > 0) parts.Add("cont: " + _errContinue);
+                if (_errDouble.Length > 0) parts.Add("x2: " + _errDouble);
+                if (_errInterstitial.Length > 0) parts.Add("inter: " + _errInterstitial);
+                return string.Join(" | ", parts);
+            }
+        }
         static float RetryDelay(int fails) => Mathf.Min(60f, 5f * Mathf.Pow(2f, Mathf.Max(0, fails - 1)));
 
         public bool IsShowing { get; private set; }
@@ -79,19 +93,23 @@ namespace RescatePapi.Ads
 
         // ---------- videos con premio ----------
 
-        public bool IsRewardedReady(RewardedSlot slot)
-        {
-            var ad = slot == RewardedSlot.Continue ? _continue : _doubleCoins;
-            return ad != null && ad.CanShowAd();
-        }
+        static bool Ready(RewardedAd ad) => ad != null && ad.CanShowAd();
+
+        /// <summary>
+        /// Hay video para esa oferta. Si su propio bloque no cargo se usa el del otro (los dos son videos con
+        /// premio): asi el boton aparece aunque uno falle; el usado se recarga al cerrarse.
+        /// </summary>
+        public bool IsRewardedReady(RewardedSlot slot) => Ready(_continue) || Ready(_doubleCoins);
 
         /// <summary>Muestra el video. onReward solo si lo vio completo; onClosed siempre al cerrar.</summary>
         public bool ShowRewarded(RewardedSlot slot, Action onReward, Action onClosed)
         {
             if (!IsRewardedReady(slot)) return false;
-            var ad = slot == RewardedSlot.Continue ? _continue : _doubleCoins;
+            var own = slot == RewardedSlot.Continue ? _continue : _doubleCoins;
+            var used = Ready(own) ? slot : (slot == RewardedSlot.Continue ? RewardedSlot.DoubleCoins : RewardedSlot.Continue);
+            var ad = used == RewardedSlot.Continue ? _continue : _doubleCoins;
             // Ya se usa: el siguiente se pide en cuanto se cierre
-            if (slot == RewardedSlot.Continue) _continue = null; else _doubleCoins = null;
+            if (used == RewardedSlot.Continue) _continue = null; else _doubleCoins = null;
             bool rewarded = false, finished = false;
             void Finish()
             {
@@ -100,7 +118,7 @@ namespace RescatePapi.Ads
                 IsShowing = false;
                 ad.Destroy();
                 onClosed?.Invoke();
-                LoadRewarded(slot);                      // el siguiente queda listo
+                LoadRewarded(used);                      // el siguiente queda listo
             }
             ad.OnAdFullScreenContentClosed += () => OnMain(Finish);
             ad.OnAdFullScreenContentFailed += e => OnMain(() => { Debug.LogWarning($"[Ads] Video fallo: {e.GetMessage()}"); Finish(); });
@@ -118,13 +136,15 @@ namespace RescatePapi.Ads
                 if (error != null || ad == null)
                 {
                     int fails = slot == RewardedSlot.Continue ? ++_failsContinue : ++_failsDouble;
+                    string msg = $"{error?.GetMessage()} (codigo {error?.GetCode()}, intento {fails})";
+                    if (slot == RewardedSlot.Continue) _errContinue = msg; else _errDouble = msg;
                     Debug.LogWarning($"[Ads] No cargo video {slot} (intento {fails}): {error?.GetMessage()}");
                     Status = $"video {slot} no cargo, reintento: {error?.GetMessage()}";
                     MainThread.RunAfter(RetryDelay(fails), () => LoadRewarded(slot));
                     return;
                 }
-                if (slot == RewardedSlot.Continue) { _continue = ad; _failsContinue = 0; }
-                else { _doubleCoins = ad; _failsDouble = 0; }
+                if (slot == RewardedSlot.Continue) { _continue = ad; _failsContinue = 0; _errContinue = ""; }
+                else { _doubleCoins = ad; _failsDouble = 0; _errDouble = ""; }
                 Status = "listo";
             }));
         }
@@ -163,6 +183,7 @@ namespace RescatePapi.Ads
                 if (error != null || ad == null)
                 {
                     _failsInterstitial++;
+                    _errInterstitial = $"{error?.GetMessage()} (codigo {error?.GetCode()}, intento {_failsInterstitial})";
                     Debug.LogWarning($"[Ads] No cargo intersticial (intento {_failsInterstitial}): {error?.GetMessage()}");
                     Status = $"intersticial no cargo, reintento: {error?.GetMessage()}";
                     MainThread.RunAfter(RetryDelay(_failsInterstitial), LoadInterstitial);
@@ -170,6 +191,7 @@ namespace RescatePapi.Ads
                 }
                 _interstitial = ad;
                 _failsInterstitial = 0;
+                _errInterstitial = "";
             }));
         }
 

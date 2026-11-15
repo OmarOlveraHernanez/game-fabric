@@ -355,6 +355,8 @@ namespace RescatePapi
             float pad = Screen.height * 0.03f;
             string ads = _ads == null ? "-" : $"{_ads.Status}  [cont {(_ads.IsRewardedReady(RewardedSlot.Continue) ? "si" : "no")}, x2 {(_ads.IsRewardedReady(RewardedSlot.DoubleCoins) ? "si" : "no")}, inter {(_ads.IsInterstitialReady ? "si" : "no")}]";
             GUI.Label(new Rect(pad, Screen.height - pad * 2.5f, Screen.width, pad * 2), $"{_fps:0} fps  vel {_sim.Speed:0.0}  anuncios: {ads}  intersticial: {_adPolicy.Describe(Time.realtimeSinceStartup)}", _small);
+            if (_ads != null && _ads.Errors.Length > 0)
+                GUI.Label(new Rect(pad, Screen.height - pad * 4.5f, Screen.width, pad * 2), "errores: " + _ads.Errors, _small);
         }
     }
 }
