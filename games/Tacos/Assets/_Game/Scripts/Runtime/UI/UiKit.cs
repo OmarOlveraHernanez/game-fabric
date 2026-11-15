@@ -137,7 +137,8 @@ namespace Tacos.UI
             colors.disabledColor = new Color(1f, 1f, 1f, 0.35f);
             colors.fadeDuration = 0.05f;
             button.colors = colors;
-            if (!string.IsNullOrEmpty(text)) FillLabel(img.transform, text, fontSize, textColor, TextAnchor.MiddleCenter, 8f);
+            // text == null: sin etiqueta (el que llama arma su contenido). "" = etiqueta vacia que se llena despues.
+            if (text != null) FillLabel(img.transform, text, fontSize, textColor, TextAnchor.MiddleCenter, 8f);
             button.onClick.AddListener(() => onClick?.Invoke());
             return button;
         }
