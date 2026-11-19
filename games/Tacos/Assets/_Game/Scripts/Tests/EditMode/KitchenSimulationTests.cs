@@ -24,9 +24,7 @@ namespace Tacos.Tests
         static void BuildOrderFor(KitchenSimulation s, int customer)
         {
             var o = s.Customers[customer].Order;
-            Assert.AreEqual(CommandResult.Ok, s.Apply(Command.StartMeat(o.Meat)));
-            Advance(s, s.CookTime + 0.1f);
-            Assert.AreEqual(CommandResult.Ok, s.Apply(Command.TakeMeat(0)));
+            Assert.AreEqual(CommandResult.Ok, s.Apply(Command.ServeMeat(o.Meat)));
             foreach (var e in Extras.All)
                 if (Extras.Has(o.Extras, e)) Assert.AreEqual(CommandResult.Ok, s.Apply(Command.ToggleExtra(e)));
         }
@@ -40,30 +38,49 @@ namespace Tacos.Tests
         }
 
         [Test]
-        public void Carne_CrudaNoSePuedeTomar_ListaSiYQuemadaSeTira()
+        public void Cazo_ServirGastaUnaPorcion_VacioSeRellenaConTiempo()
         {
             var s = Sim(0);
-            s.Apply(Command.StartMeat(Meat.Pastor));
-            Advance(s, 1f);
-            Assert.AreEqual(CommandResult.MeatRaw, s.Apply(Command.TakeMeat(0)));
-            Advance(s, s.CookTime);
-            Assert.AreEqual(CommandResult.Ok, s.Apply(Command.TakeMeat(0)));
+            var pot = s.Pot(Meat.Pastor);
+            Assert.AreEqual(s.Rules.PotPortions, pot.Portions, "empieza lleno");
+            Assert.AreEqual(CommandResult.PotFull, s.Apply(Command.RefillMeat(Meat.Pastor)));
+            Assert.AreEqual(CommandResult.Ok, s.Apply(Command.ServeMeat(Meat.Pastor)));
             Assert.AreEqual(Meat.Pastor, s.Plates[s.SelectedPlate].Meat);
+            Assert.AreEqual(s.Rules.PotPortions - 1, pot.Portions);
 
-            s.Apply(Command.StartMeat(Meat.Asada));
-            Advance(s, s.Rules.MeatBurnTime + 0.1f);
-            Assert.AreEqual(CommandResult.MeatBurned, s.Apply(Command.TakeMeat(0)));
-            Assert.IsTrue(s.Grill[0] == null, "la carne quemada se tira");
+            pot.Portions = 0;
+            Assert.AreEqual(CommandResult.PotEmpty, s.Apply(Command.ServeMeat(Meat.Pastor)));
+            Meat refilled = Meat.None;
+            s.PotRefilled += m => refilled = m;
+            Assert.AreEqual(CommandResult.Ok, s.Apply(Command.RefillMeat(Meat.Pastor)));
+            Assert.AreEqual(CommandResult.PotRefilling, s.Apply(Command.ServeMeat(Meat.Pastor)));
+            Advance(s, s.CookTime + 0.1f);
+            Assert.AreEqual(s.Rules.PotPortions, pot.Portions);
+            Assert.AreEqual(Meat.Pastor, refilled);
         }
 
         [Test]
-        public void ElGuero_CocinaVeintePorCientoMasRapido()
+        public void Cazos_SonLosDeLaMision_YLosPedidosSoloUsanEsasCarnes()
+        {
+            Assert.AreEqual(2, Sim(0).Pots.Length);
+            var s = new KitchenSimulation(LevelConfig.Zona1[6], TaqueroDef.Guero, 4);
+            Assert.AreEqual(4, s.Pots.Length);
+            Assert.IsTrue(s.Pot(Meat.Suadero) != null);
+            Assert.AreEqual(CommandResult.InvalidArgument, Sim(0).Apply(Command.ServeMeat(Meat.Chorizo)));
+            var seen = new System.Collections.Generic.HashSet<Meat>();
+            for (int i = 0; i < 400; i++) seen.Add(s.NewOrder().Meat);
+            Assert.AreEqual(4, seen.Count);
+        }
+
+        [Test]
+        public void ElGuero_RellenaVeintePorCientoMasRapido()
         {
             var s = Sim(0, TaqueroDef.Guero);
             Assert.AreEqual(3.2, s.CookTime, 0.001);
-            s.Apply(Command.StartMeat(Meat.Asada));
+            s.Pot(Meat.Asada).Portions = 0;
+            s.Apply(Command.RefillMeat(Meat.Asada));
             Advance(s, 3.3f);
-            Assert.AreEqual(CommandResult.Ok, s.Apply(Command.TakeMeat(0)));
+            Assert.AreEqual(CommandResult.Ok, s.Apply(Command.ServeMeat(Meat.Asada)));
         }
 
         [Test]
@@ -99,9 +116,7 @@ namespace Tacos.Tests
         public void Turno3_CarneSinTortillaEnElPlato_NoSePuede()
         {
             var s = Sim(2);
-            s.Apply(Command.StartMeat(Meat.Pastor));
-            Advance(s, s.CookTime + 0.1f);
-            Assert.AreEqual(CommandResult.NeedTortillaFirst, s.Apply(Command.TakeMeat(0)));
+            Assert.AreEqual(CommandResult.NeedTortillaFirst, s.Apply(Command.ServeMeat(Meat.Pastor)));
         }
 
         [Test]
@@ -109,9 +124,7 @@ namespace Tacos.Tests
         {
             var s = Sim(0);
             Assert.AreEqual(CommandResult.NeedMeatFirst, s.Apply(Command.ToggleExtra(Extra.Cebolla)));
-            s.Apply(Command.StartMeat(Meat.Pastor));
-            Advance(s, s.CookTime + 0.1f);
-            s.Apply(Command.TakeMeat(0));
+            Assert.AreEqual(CommandResult.Ok, s.Apply(Command.ServeMeat(Meat.Pastor)));
             s.Apply(Command.ToggleExtra(Extra.Cebolla));
             Assert.AreEqual(Extra.Cebolla, s.Plates[s.SelectedPlate].Extras);
             s.Apply(Command.ToggleExtra(Extra.Cebolla));
@@ -143,9 +156,7 @@ namespace Tacos.Tests
             UntilCustomer(s);
             var o = s.Customers[0].Order;
             var otra = o.Meat == Meat.Pastor ? Meat.Asada : Meat.Pastor;
-            s.Apply(Command.StartMeat(otra));
-            Advance(s, s.CookTime + 0.1f);
-            s.Apply(Command.TakeMeat(0));
+            Assert.AreEqual(CommandResult.Ok, s.Apply(Command.ServeMeat(otra)));
             Assert.AreEqual(CommandResult.WrongOrder, s.Apply(Command.Deliver(0)));
             Assert.AreEqual(1, s.Failed);
             Assert.AreEqual(0, s.Coins);
@@ -226,7 +237,7 @@ namespace Tacos.Tests
             Advance(s, 90.1f);
             Assert.IsTrue(s.IsFinished);
             Assert.AreEqual(1, fin);
-            Assert.AreEqual(CommandResult.NotRunning, s.Apply(Command.StartMeat(Meat.Pastor)));
+            Assert.AreEqual(CommandResult.NotRunning, s.Apply(Command.ServeMeat(Meat.Pastor)));
         }
 
         [Test]
@@ -241,10 +252,11 @@ namespace Tacos.Tests
         public void Estrellas_SegunMonedas()
         {
             var s = Sim(0);
-            Assert.AreEqual(0, s.StarsFor(59));
-            Assert.AreEqual(1, s.StarsFor(60));
-            Assert.AreEqual(2, s.StarsFor(140));
-            Assert.AreEqual(3, s.StarsFor(200));
+            var st = s.Level.Stars;
+            Assert.AreEqual(0, s.StarsFor(st[0] - 1));
+            Assert.AreEqual(1, s.StarsFor(st[0]));
+            Assert.AreEqual(2, s.StarsFor(st[1]));
+            Assert.AreEqual(3, s.StarsFor(st[2]));
         }
     }
 }

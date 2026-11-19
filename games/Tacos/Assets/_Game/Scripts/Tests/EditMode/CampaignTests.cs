@@ -70,14 +70,14 @@ namespace Tacos.Tests
             var baseRules = new KitchenRules();
             var r = p.BuildRules(baseRules);
             Assert.AreEqual(3, r.PlateCount);
-            Assert.AreEqual(3, r.GrillSlots);
+            Assert.AreEqual(8, r.PotPortions);
             Assert.AreEqual(1.2, r.TortillaHotTime, 0.001);
             Assert.AreEqual(1.15, r.PatienceMultiplier, 0.001);
             Assert.AreEqual(2, baseRules.PlateCount, "la base no cambia");
 
             var s = new KitchenSimulation(LevelConfig.Zona1[2], TaqueroDef.Guero, 1, r);
             Assert.AreEqual(3, s.Plates.Length);
-            Assert.AreEqual(3, s.Grill.Length);
+            Assert.AreEqual(8, s.Pots[0].Portions);
         }
 
         [Test]
@@ -99,9 +99,7 @@ namespace Tacos.Tests
             var c = s.Customers[0];
             Assert.IsTrue(c.Rush);
             Assert.AreEqual(30.0, c.MaxPatience, 0.01);
-            s.Apply(Command.StartMeat(c.Order.Meat));
-            Advance(s, s.CookTime + 0.1f);
-            s.Apply(Command.TakeMeat(0));
+            s.Apply(Command.ServeMeat(c.Order.Meat));
             foreach (var e in Extras.All) if (Extras.Has(c.Order.Extras, e)) s.Apply(Command.ToggleExtra(e));
             int baseTip = (int)System.Math.Round(5 * c.PatienceRatio, System.MidpointRounding.AwayFromZero);
             int tip = -1;
@@ -113,7 +111,7 @@ namespace Tacos.Tests
         [Test]
         public void CeroErrores_UnaFallaQuitaLasEstrellas()
         {
-            var lvl = LevelConfig.Zona1[4];
+            var lvl = LevelConfig.Zona1[5];
             Assert.AreEqual(MissionRule.NoErrors, lvl.Rule);
             var s = new KitchenSimulation(lvl, TaqueroDef.Guero, 5);
             for (int i = 0; i < 200 && s.Customers[0] == null; i++) s.Tick(0.05f);
@@ -124,14 +122,14 @@ namespace Tacos.Tests
         }
 
         [Test]
-        public void SinQuemar_QuemarCarneRompeLaRegla()
+        public void SinQuemar_QuemarTortillaRompeLaRegla()
         {
-            var s = new KitchenSimulation(LevelConfig.Zona1[7], TaqueroDef.Guero, 5);
+            var s = new KitchenSimulation(LevelConfig.Zona1[9], TaqueroDef.Guero, 5);
             Assert.AreEqual(MissionRule.NoBurn, s.Level.Rule);
             int burned = 0;
             s.ItemBurned += () => burned++;
-            s.Apply(Command.StartMeat(Meat.Asada));
-            Advance(s, s.Rules.MeatBurnTime + 0.2f);
+            s.Apply(Command.AddTortilla());
+            Advance(s, s.Rules.TortillaBurnTime + 0.2f);
             Assert.AreEqual(1, burned, "se cuenta una sola vez");
             Assert.AreEqual(1, s.Burned);
             Assert.IsTrue(s.RuleBroken);
@@ -140,9 +138,9 @@ namespace Tacos.Tests
         [Test]
         public void SoloPastor_YClienteExigente_RespetanSusPedidos()
         {
-            var pastor = new KitchenSimulation(LevelConfig.Zona1[9], TaqueroDef.Tio, 8);
+            var pastor = new KitchenSimulation(LevelConfig.Zona1[10], TaqueroDef.Tio, 8);
             for (int i = 0; i < 300; i++) Assert.AreEqual(Meat.Pastor, pastor.NewOrder().Meat);
-            var exigente = new KitchenSimulation(LevelConfig.Zona1[6], TaqueroDef.Tio, 8);
+            var exigente = new KitchenSimulation(LevelConfig.Zona1[8], TaqueroDef.Tio, 8);
             for (int i = 0; i < 300; i++)
             {
                 int n = Extras.Count(exigente.NewOrder().Extras);

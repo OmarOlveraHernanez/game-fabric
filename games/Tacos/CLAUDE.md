@@ -1,4 +1,4 @@
-# Tacos (nombre provisional)
+# Taquería Neón (carpeta `games/Tacos`)
 
 Juego de cocina en una taquería callejera: llegan clientes con su pedido, pones la carne en la plancha, armas el taco con sus extras y lo entregas antes de que se canse el cliente. Estaciones fijas (se tocan, no se camina). Primero campaña offline y después cooperativo en línea. Diseño completo en `GDD.md`.
 
@@ -28,4 +28,9 @@ Juego de cocina en una taquería callejera: llegan clientes con su pedido, pones
   - Clientes con prisa.
   - Monedas acumuladas y 4 mejoras (`Campaign.cs`).
   - Mapa de misiones y tienda.
-- **Pendiente:** arte, sonido y anuncios (T3).
+- **T3a, arte y sonido:** `TacosArt` carga `Resources/Sprites` y `TacosSounds` carga `Resources/Audio`; todo tiene respaldo si falta el archivo. Fuentes en `art-source/TaqueriaNeon/`. Para cambiar arte: edita la hoja en `ia/`, corre `procesar.py` y vuelve a copiar.
+- **T3a+, diversión (16 nov):** racha y power-ups (`PowerUps.cs`, `PowerUpTests`), clientes especiales, tutorial del Tío (`TutorialOverlay`), mapas de zonas y misiones (`TacosGame.Maps`), HUD y franja anime (`TacosGame.Hud`). `UI/Stage` coloca cosas en pixeles de una imagen pintada. Todo comando del jugador sigue siendo un `Command` (también usar y agarrar power-ups).
+- **Pendiente (T3b):** anuncios (app nueva en AdMob; agregar el paquete GMA requiere aprobación) y ficha de Play.
+
+## Antes de publicar (no olvidar)
+- `TacosGame.TodoAbierto` (Runtime/TacosGame.cs) en **false**. Está en true para probar con todos los mundos y misiones abiertos; el mapa muestra "MODO PRUEBA · todo abierto" mientras siga prendido.

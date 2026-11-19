@@ -25,9 +25,11 @@ namespace Tacos
     [System.Serializable]
     public class TacosData
     {
-        public int version = 2;
+        public int version = 3;
         public Logic.CampaignProgress progress = new Logic.CampaignProgress();
         public string taquero = "guero";
         public int[] bestStars; // solo version 1 (prototipo T1): se pasa a progress al cargar
+        public int introsSeen;  // bit por mision: el Tio ya explico lo nuevo
+        public int guidedSeen;  // bit por mision: ya se hizo el tutorial con la manita
     }
 }

@@ -6,14 +6,17 @@ namespace Tacos.Logic
     /// </summary>
     public enum CommandType
     {
-        AddTortilla,   // poner una tortilla en el comal
+        AddTortilla,   // Arg = (int)Base: poner una base en el comal (0 = la de siempre del puesto)
         TakeTortilla,  // Arg = lugar del comal
-        StartMeat,     // Arg = (int)Meat
-        TakeMeat,      // Arg = lugar de la plancha
+        RefillMeat,    // Arg = (int)Meat: rellenar su cazo (tarda CookTime)
+        ServeMeat,     // Arg = (int)Meat: una porcion del cazo al plato
         SelectPlate,   // Arg = plato
         ToggleExtra,   // Arg = (int)Extra, al plato elegido
         TrashPlate,    // Arg = plato
-        Deliver        // Arg = lugar del cliente
+        Deliver,       // Arg = lugar del cliente
+        TakePickup,    // agarrar el power-up que cayo del cielo
+        UsePowerUp,    // Arg = (int)PowerUp
+        FlipItem       // Arg = lugar del comal: voltear la base (garnachas)
     }
 
     public readonly struct Command
@@ -22,14 +25,17 @@ namespace Tacos.Logic
         public readonly int Arg;
         public Command(CommandType type, int arg = 0) { Type = type; Arg = arg; }
 
-        public static Command AddTortilla() => new Command(CommandType.AddTortilla);
+        public static Command AddTortilla(Base b = Base.None) => new Command(CommandType.AddTortilla, (int)b);
+        public static Command FlipItem(int slot) => new Command(CommandType.FlipItem, slot);
         public static Command TakeTortilla(int slot) => new Command(CommandType.TakeTortilla, slot);
-        public static Command StartMeat(Meat m) => new Command(CommandType.StartMeat, (int)m);
-        public static Command TakeMeat(int slot) => new Command(CommandType.TakeMeat, slot);
+        public static Command RefillMeat(Meat m) => new Command(CommandType.RefillMeat, (int)m);
+        public static Command ServeMeat(Meat m) => new Command(CommandType.ServeMeat, (int)m);
         public static Command SelectPlate(int plate) => new Command(CommandType.SelectPlate, plate);
         public static Command ToggleExtra(Extra e) => new Command(CommandType.ToggleExtra, (int)e);
         public static Command TrashPlate(int plate) => new Command(CommandType.TrashPlate, plate);
         public static Command Deliver(int customer) => new Command(CommandType.Deliver, customer);
+        public static Command TakePickup() => new Command(CommandType.TakePickup);
+        public static Command UsePowerUp(PowerUp p) => new Command(CommandType.UsePowerUp, (int)p);
 
         public override string ToString() => Type + "(" + Arg + ")";
     }
@@ -45,9 +51,9 @@ namespace Tacos.Logic
         TortillaCold,
         TortillaBurned,   // se tira sola
         NoFreePlate,
-        GrillFull,
-        MeatRaw,
-        MeatBurned,       // se tira sola
+        PotEmpty,         // el cazo no tiene porciones: hay que rellenarlo
+        PotRefilling,     // el cazo se esta rellenando
+        PotFull,          // el cazo ya esta lleno
         NeedTortillaFirst,
         PlatesFull,
         NeedMeatFirst,
@@ -55,6 +61,11 @@ namespace Tacos.Logic
         NoCustomer,
         NoPlateReady,
         Served,
-        WrongOrder
+        WrongOrder,
+        NoPickup,         // no hay power-up flotando (o ya se fue)
+        NoPowerUp,        // no tienes ese power-up cargado
+        PowerUpActive,    // ese power-up ya esta funcionando
+        NeedsFlip,        // la base tiene un lado listo: hay que voltearla antes de servirla
+        AlreadyFlipped
     }
 }

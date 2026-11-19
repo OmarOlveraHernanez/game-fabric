@@ -2,7 +2,16 @@ using System;
 
 namespace Tacos.Logic
 {
-    public enum Meat { None = 0, Pastor = 1, Asada = 2 }
+    /// <summary>Lo principal del pedido: la carne en la taqueria, el guisado en las garnachas, etc. (ver Stall.cs).</summary>
+    public enum Meat
+    {
+        None = 0, Pastor = 1, Asada = 2, Chorizo = 3, Suadero = 4,
+        // Garnachas (guisados en cazuela)
+        Chicharron = 5, Tinga = 6, PapaChorizo = 7, Frijoles = 8
+    }
+
+    /// <summary>La base que se calienta en el comal: tortilla en la taqueria; sope, gordita o quesadilla en las garnachas.</summary>
+    public enum Base { None = 0, Tortilla = 1, Sope = 2, Gordita = 3, Quesadilla = 4 }
 
     /// <summary>Extras de un taco. Se combinan como banderas (un taco puede llevar varios).</summary>
     [Flags]
@@ -14,14 +23,18 @@ namespace Tacos.Logic
         Pina = 4,
         SalsaVerde = 8,
         SalsaRoja = 16,
-        Limon = 32
+        Limon = 32,
+        // Garnachas
+        Crema = 64,
+        Queso = 128,
+        Lechuga = 256
     }
 
     public static class Extras
     {
         /// <summary>Todos los extras en el orden en que se muestran.</summary>
         public static readonly Extra[] All =
-            { Extra.Cebolla, Extra.Cilantro, Extra.Pina, Extra.SalsaVerde, Extra.SalsaRoja, Extra.Limon };
+            { Extra.Cebolla, Extra.Cilantro, Extra.Pina, Extra.SalsaVerde, Extra.SalsaRoja, Extra.Limon, Extra.Crema, Extra.Queso, Extra.Lechuga };
 
         public const Extra Salsas = Extra.SalsaVerde | Extra.SalsaRoja;
 
@@ -35,33 +48,39 @@ namespace Tacos.Logic
         public static bool Has(Extra set, Extra x) => (set & x) != 0;
     }
 
-    /// <summary>Lo que pide un cliente: una carne y sus extras.</summary>
+    /// <summary>Lo que pide un cliente: su base, lo principal y sus extras.</summary>
     public readonly struct Order
     {
+        public readonly Base Base;
         public readonly Meat Meat;
         public readonly Extra Extras;
-        public Order(Meat meat, Extra extras) { Meat = meat; Extras = extras; }
-        public override string ToString() => Meat + " + " + Extras;
+        public Order(Meat meat, Extra extras) : this(Base.Tortilla, meat, extras) { }
+        public Order(Base b, Meat meat, Extra extras) { Base = b; Meat = meat; Extras = extras; }
+        public override string ToString() => Base + " " + Meat + " + " + Extras;
     }
 
     /// <summary>Un plato de la barra donde se arma el taco.</summary>
     public sealed class Plate
     {
-        public bool Tortilla;
+        public Base Base;
+        /// <summary>Ya tiene su base (tortilla, sope...). En la taqueria es "tiene tortilla".</summary>
+        public bool Tortilla { get => Base != Base.None; set => Base = value ? Base.Tortilla : Base.None; }
         public Meat Meat;
         public Extra Extras;
 
         public bool HasMeat => Meat != Meat.None;
         public bool IsEmpty => !Tortilla && !HasMeat && Extras == Extra.None;
 
-        public bool Matches(Order o) => Tortilla && Meat == o.Meat && Extras == o.Extras;
+        public bool Matches(Order o) => Base == o.Base && Meat == o.Meat && Extras == o.Extras;
 
         /// <summary>El plato va camino a este pedido: misma carne y ningun extra que el cliente no pidio.</summary>
-        public bool IsHeadingTo(Order o) => HasMeat && Meat == o.Meat && (Extras & ~o.Extras) == 0;
+        public bool IsHeadingTo(Order o) => HasMeat && Base == o.Base && Meat == o.Meat && (Extras & ~o.Extras) == 0;
 
-        public void Clear(bool withTortilla)
+        public void Clear(bool withTortilla) => Clear(withTortilla ? Base.Tortilla : Base.None);
+
+        public void Clear(Base b)
         {
-            Tortilla = withTortilla;
+            Base = b;
             Meat = Meat.None;
             Extras = Extra.None;
         }

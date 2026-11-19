@@ -3,12 +3,13 @@ namespace Tacos.Logic
     public enum HintKind
     {
         WaitCustomer,
-        StartMeat,     // Meat
-        WaitMeat,      // Meat
-        TakeMeat,      // Slot
+        RefillMeat,    // Meat: el cazo esta vacio
+        WaitMeat,      // Meat: el cazo se esta rellenando
+        ServeMeat,     // Meat
         AddTortilla,
         WaitTortilla,
         TakeTortilla,  // Slot
+        FlipItem,      // Slot: voltear la base (garnachas)
         SelectPlate,   // Plate
         AddExtra,      // Extra
         TrashPlate,    // Plate
@@ -65,9 +66,13 @@ namespace Tacos.Logic
                         return new Hint(HintKind.AddExtra, target, Command.ToggleExtra(e), extra: e);
             }
 
-            // 3. Hace falta un plato sin carne; si no hay, se tira uno que no le sirve a nadie
+            // 3. Hace falta un plato sin carne (y sin otra base); si no hay, se tira uno que no le sirve a nadie
             int free = -1;
-            for (int p = 0; p < s.Plates.Length; p++) if (!s.Plates[p].HasMeat) { free = p; break; }
+            for (int p = 0; p < s.Plates.Length; p++)
+            {
+                var pl = s.Plates[p];
+                if (!pl.HasMeat && (!pl.Tortilla || pl.Base == order.Base)) { free = p; break; }
+            }
             if (free < 0)
             {
                 int trash = 0;
@@ -75,41 +80,43 @@ namespace Tacos.Logic
                 return new Hint(HintKind.TrashPlate, target, Command.TrashPlate(trash), plate: trash);
             }
 
-            // 4. La carne: primero ponerla (es lo que mas tarda)
-            int grill = -1;
-            for (int g = 0; g < s.Grill.Length; g++)
-                if (s.Grill[g] != null && s.Grill[g].Meat == order.Meat && s.MeatState(s.Grill[g]) != CookState.Burned) { grill = g; break; }
-            if (grill < 0)
-            {
-                for (int g = 0; g < s.Grill.Length; g++)
-                    if (s.Grill[g] != null && s.MeatState(s.Grill[g]) == CookState.Burned)
-                        return new Hint(HintKind.TakeMeat, target, Command.TakeMeat(g), slot: g); // tirar la quemada
-                if (System.Array.IndexOf(s.Grill, null) < 0) return new Hint(HintKind.WaitMeat, target, meat: order.Meat);
-                return new Hint(HintKind.StartMeat, target, Command.StartMeat(order.Meat), meat: order.Meat);
-            }
+            // 4. Si el cazo de esa carne esta vacio, rellenarlo primero (es lo que mas tarda)
+            var pot = s.Pot(order.Meat);
+            if (pot != null && pot.Portions <= 0 && !pot.IsRefilling)
+                return new Hint(HintKind.RefillMeat, target, Command.RefillMeat(order.Meat), meat: order.Meat);
 
-            // 5. La tortilla (solo en turnos con comal)
-            bool plateWithTortilla = false;
-            foreach (var pl in s.Plates) if (pl.Tortilla && !pl.HasMeat) plateWithTortilla = true;
-            if (s.Level.NeedsTortilla && !plateWithTortilla)
+            // 5. La base (solo en turnos con comal): la que pidio el cliente
+            bool plateWithBase = false;
+            foreach (var pl in s.Plates) if (pl.Base == order.Base && !pl.HasMeat) plateWithBase = true;
+            if (s.Level.NeedsTortilla && !plateWithBase)
             {
                 int raw = -1;
                 for (int c = 0; c < s.Comal.Length; c++)
                 {
                     var t = s.Comal[c];
-                    if (t == null) continue;
+                    if (t == null || t.Base != order.Base) continue;
                     var st = s.TortillaState(t);
+                    if (st == CookState.Flip) return new Hint(HintKind.FlipItem, target, Command.FlipItem(c), slot: c);
                     if (st != CookState.Raw) return new Hint(HintKind.TakeTortilla, target, Command.TakeTortilla(c), slot: c);
                     raw = c;
                 }
                 if (raw >= 0) return new Hint(HintKind.WaitTortilla, target, slot: raw);
-                return new Hint(HintKind.AddTortilla, target, Command.AddTortilla());
+                // Si el comal esta lleno de bases que no pidio este cliente, se despeja la mas avanzada
+                if (System.Array.IndexOf(s.Comal, null) < 0)
+                {
+                    int old = 0;
+                    for (int c = 1; c < s.Comal.Length; c++) if (s.Comal[c].Age > s.Comal[old].Age) old = c;
+                    var st = s.TortillaState(s.Comal[old]);
+                    if (st == CookState.Flip) return new Hint(HintKind.FlipItem, target, Command.FlipItem(old), slot: old);
+                    if (st == CookState.Raw) return new Hint(HintKind.WaitTortilla, target, slot: old);
+                    return new Hint(HintKind.TakeTortilla, target, Command.TakeTortilla(old), slot: old);
+                }
+                return new Hint(HintKind.AddTortilla, target, Command.AddTortilla(order.Base));
             }
 
-            // 6. Pasar la carne al plato cuando este lista
-            if (s.MeatState(s.Grill[grill]) == CookState.Ready)
-                return new Hint(HintKind.TakeMeat, target, Command.TakeMeat(grill), slot: grill);
-            return new Hint(HintKind.WaitMeat, target, meat: order.Meat, slot: grill);
+            // 6. Servir la carne del cazo
+            if (pot == null || pot.IsRefilling) return new Hint(HintKind.WaitMeat, target, meat: order.Meat);
+            return new Hint(HintKind.ServeMeat, target, Command.ServeMeat(order.Meat), meat: order.Meat);
         }
 
         static bool UsefulForSomeone(KitchenSimulation s, Plate p)

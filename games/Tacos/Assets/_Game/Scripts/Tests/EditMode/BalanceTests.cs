@@ -48,13 +48,13 @@ namespace Tacos.Tests
     public class BalanceTests
     {
         [Test]
-        public void Pistas_PrimeroPonerLaCarne()
+        public void Pistas_PrimeroServirLaCarne()
         {
             var s = new KitchenSimulation(LevelConfig.Turnos[0], TaqueroDef.Guero, 5);
             Assert.AreEqual(HintKind.WaitCustomer.ToString(), Hints.Next(s).Kind.ToString());
             for (int i = 0; i < 100 && s.Customers[0] == null; i++) s.Tick(0.05f);
             var h = Hints.Next(s);
-            Assert.AreEqual(HintKind.StartMeat.ToString(), h.Kind.ToString());
+            Assert.AreEqual(HintKind.ServeMeat.ToString(), h.Kind.ToString());
             Assert.AreEqual(s.Customers[0].Order.Meat.ToString(), h.Meat.ToString());
         }
 

@@ -27,9 +27,82 @@ namespace Tacos.UI
         public static readonly Color Plato = new Color32(0xEF, 0xE6, 0xD6, 0xFF);
 
         static Font _font;
-        static Sprite _rounded, _star;
+        static Sprite _rounded, _star, _circle, _ring, _glow;
 
-        public static Font Font => _font != null ? _font : (_font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"));
+        public static Sprite RoundedSpritePublic => RoundedSprite;
+        /// <summary>Circulo blanco lleno (se estira a ovalo).</summary>
+        public static Sprite CircleSprite => _circle != null ? _circle : (_circle = Radial("UiCircle", 128, d => Mathf.Clamp01((0.5f - d) * 128f)));
+        /// <summary>Aro blanco (contorno de seleccion, pista y reloj de relleno).</summary>
+        public static Sprite RingSprite => _ring != null ? _ring : (_ring = Radial("UiRing", 128, d => Mathf.Clamp01((0.5f - d) * 128f) * Mathf.Clamp01((d - 0.42f) * 128f)));
+        /// <summary>Brillo suave (se desvanece hacia el borde).</summary>
+        public static Sprite GlowSprite => _glow != null ? _glow : (_glow = Radial("UiGlow", 64, d => Mathf.Pow(Mathf.Clamp01(1f - d * 2f), 1.6f)));
+
+        static Sprite Radial(string name, int size, System.Func<float, float> alphaAtDistance)
+        {
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
+                { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, name = name };
+            var px = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float dx = (x + 0.5f) / size - 0.5f, dy = (y + 0.5f) / size - 0.5f;
+                float a = alphaAtDistance(Mathf.Sqrt(dx * dx + dy * dy));
+                px[y * size + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(a) * 255f));
+            }
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+
+        /// <summary>Se dispara con cualquier boton (para el sonido de click).</summary>
+        public static System.Action Clicked;
+
+        /// <summary>Imagen sin recibir toques; se oculta sola si falta el sprite.</summary>
+        public static Image Picture(Transform parent, string name, Sprite sprite)
+        {
+            var img = NewRect(name, parent).gameObject.AddComponent<Image>();
+            img.sprite = sprite;
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            img.enabled = sprite != null;
+            return img;
+        }
+
+        static Font _display;
+        static bool _fontLoaded, _custom;
+
+        /// <summary>Poppins Bold (Resources/Fonts, licencia OFL); si falta, la letra que trae Unity.</summary>
+        public static Font Font
+        {
+            get
+            {
+                if (!_fontLoaded)
+                {
+                    _fontLoaded = true;
+                    _font = Resources.Load<Font>("Fonts/Poppins-Bold");
+                    _display = Resources.Load<Font>("Fonts/Poppins-BoldItalic");
+                    _custom = _font != null;
+                    if (_font == null) _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                }
+                return _font;
+            }
+        }
+
+        /// <summary>Letra cursiva para titulos con fuerza (la franja de los power-ups).</summary>
+        public static Font Display { get { var f = Font; return _display != null ? _display : f; } }
+
+        /// <summary>Texto con contorno oscuro, para leerse sobre el arte.</summary>
+        public static Text Outlined(Transform parent, string text, int size, Color color, TextAnchor align = TextAnchor.MiddleCenter, float thickness = 2.5f)
+        {
+            var t = Label(parent, text, size, color, align);
+            var o = t.gameObject.AddComponent<Outline>();
+            o.effectColor = new Color(0.08f, 0.05f, 0.08f, 0.95f);
+            o.effectDistance = new Vector2(thickness, -thickness);
+            var o2 = t.gameObject.AddComponent<Outline>();
+            o2.effectColor = o.effectColor;
+            o2.effectDistance = new Vector2(-thickness, thickness);
+            return t;
+        }
 
         public static Canvas CreateCanvas(string name, int sortingOrder)
         {
@@ -99,7 +172,7 @@ namespace Tacos.UI
             t.font = Font;
             t.text = text;
             t.fontSize = size;
-            t.fontStyle = FontStyle.Bold;
+            t.fontStyle = _custom ? FontStyle.Normal : FontStyle.Bold;
             t.color = color;
             t.alignment = align;
             t.supportRichText = true;
@@ -139,7 +212,7 @@ namespace Tacos.UI
             button.colors = colors;
             // text == null: sin etiqueta (el que llama arma su contenido). "" = etiqueta vacia que se llena despues.
             if (text != null) FillLabel(img.transform, text, fontSize, textColor, TextAnchor.MiddleCenter, 8f);
-            button.onClick.AddListener(() => onClick?.Invoke());
+            button.onClick.AddListener(() => { Clicked?.Invoke(); onClick?.Invoke(); });
             return button;
         }
 
@@ -149,10 +222,13 @@ namespace Tacos.UI
             if (o != null) o.effectColor = on ? color : new Color(0f, 0f, 0f, 0f);
         }
 
+        /// <summary>Si el juego tiene su propia estrella dibujada, la pone aqui (se colorea igual).</summary>
+        public static Sprite StarOverride;
+
         public static Image Star(Transform parent, string name)
         {
             var img = NewRect(name, parent).gameObject.AddComponent<Image>();
-            img.sprite = StarSprite;
+            img.sprite = StarOverride != null ? StarOverride : StarSprite;
             img.preserveAspect = true;
             img.raycastTarget = false;
             return img;
