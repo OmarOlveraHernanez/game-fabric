@@ -56,3 +56,6 @@ desktop.ini
 # ===== Temporales locales de juegos =====
 games/*/.utmp/
 games/*/_to_delete/
+
+# Notas locales de compilacion (pueden tener datos sensibles)
+compilacion.txt
