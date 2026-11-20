@@ -295,8 +295,105 @@ namespace Tacos.Logic
             }
         };
 
+        // ================= Mundo 3: Elotes =================
+        // Lo nuevo del mundo: EL ORDEN. La mayonesa va antes que el queso y el chile en polvo.
+        // No hay comal: la base sale sola (elote y asado en palito, esquite en vaso).
+        public static readonly Meat[] SoloElote = { Meat.Elote };
+        public static readonly Meat[] EloteEsquite = { Meat.Elote, Meat.Esquite };
+        public static readonly Meat[] TodoElotes = { Meat.Elote, Meat.Esquite, Meat.EloteAsado };
+        public static readonly Meat[] SoloEsquites = { Meat.Esquite, Meat.EloteAsado };
+
+        public static readonly LevelConfig[] Elotes =
+        {
+            new LevelConfig
+            {
+                Stall = Stall.Elotes, Name = "Primer elote", Description = "Solo elotes, un cliente a la vez y pistas paso a paso.",
+                MaxCustomers = 1, Patience = 60f, MaxExtras = 2, Hints = true, Meats = SoloElote,
+                Intro = "¡Bienvenido a los elotes! Arrastra un elote de la olla a la charolita. Ojo: PRIMERO la mayonesa, si no, el queso y el chile no se pegan.",
+                Stars = new[] { 145, 305, 460 }, GapMin = 1.5f, GapMax = 2.5f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Elotes, Name = "Mayonesa primero", Description = "Hasta 2 clientes. Recuerda: mayonesa, luego lo demás.",
+                MaxCustomers = 2, Patience = 48f, MinExtras = 2, MaxExtras = 3, Meats = SoloElote, PowerUps = P1,
+                Intro = "Ya piden con todo: mayonesa, queso y chile. Siempre la mayonesa primero.",
+                Stars = new[] { 115, 260, 475 }, GapMin = 2f, GapMax = 3.5f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Elotes, Name = "Llega el esquite", Description = "Nuevo: esquite en vaso. Fíjate qué pide cada quien.",
+                MaxCustomers = 2, Patience = 48f, MaxExtras = 3, Meats = EloteEsquite, PowerUps = P1,
+                Intro = "Llegó el esquite: sale del cazo y va en vasito. Unos piden elote y otros esquite.",
+                Stars = new[] { 130, 290, 500 }, GapMin = 2f, GapMax = 3.5f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Elotes, Name = "Limón y del que pica", Description = "Hasta 3 clientes; ahora también limón y salsa picante.",
+                MaxCustomers = 3, Patience = 46f, MaxExtras = 3, Meats = EloteEsquite, PowerUps = P2,
+                Intro = "Ya pueden llegar 3 clientes. El limón y la salsa picante van cuando quieras; la mayonesa sigue yendo antes del queso.",
+                Stars = new[] { 130, 285, 470 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Elotes, Name = "Elote asado", Description = "Nuevo: elote asado en el anafre. Ya tienes las 3 estaciones.",
+                MaxCustomers = 3, Patience = 46f, MaxExtras = 3, Meats = TodoElotes, PowerUps = P2,
+                Intro = "Llegó el elote asado: sale del anafre bien doradito y va en palito. Ya tienes las 3 estaciones del carrito.",
+                Stars = new[] { 130, 295, 475 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Elotes, Name = "Domingo en la plaza", Description = "Llegan los clientes especiales.",
+                MaxCustomers = 3, Patience = 44f, MaxExtras = 3, Meats = TodoElotes, PowerUps = P2, Specials = S1, SpecialChance = 0.15f,
+                Intro = "Domingo en la plaza: hay mucha gente y puede llegar el Crítico.",
+                Stars = new[] { 170, 360, 610 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Elotes, Name = "Salida de la escuela", Description = "Clientes con prisa: menos paciencia, propina doble.",
+                MaxCustomers = 3, Patience = 42f, MaxExtras = 3, Meats = TodoElotes, RushChance = 0.3f, PowerUps = P3, Specials = S1, SpecialChance = 0.15f,
+                Intro = "¡Salida de la escuela! Los que traen prisa esperan menos pero dejan doble propina.",
+                Stars = new[] { 180, 410, 660 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Elotes, Name = "Bien preparados", Description = "Pedidos largos: de 3 a 5 cosas encima.",
+                MaxCustomers = 3, Patience = 46f, MinExtras = 3, MaxExtras = 5, Meats = TodoElotes, PowerUps = P3, Specials = S2, SpecialChance = 0.15f,
+                Intro = "Hoy los quieren bien preparados: mayonesa, queso, chile, limón y del que pica. Revisa bien el globito.",
+                Stars = new[] { 115, 275, 505 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Elotes, Name = "Cero errores", Description = "Regla: un pedido equivocado y no hay estrellas.",
+                MaxCustomers = 3, Patience = 44f, MaxExtras = 4, Meats = TodoElotes, Rule = MissionRule.NoErrors, PowerUps = P4, Specials = S2, SpecialChance = 0.2f,
+                Intro = "Cero errores: si entregas algo mal o se te va un cliente, la misión no da estrellas.",
+                Stars = new[] { 140, 345, 545 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Elotes, Name = "Noche de antojo", Description = "Esquites y elotes asados: cuida que no se acaben.",
+                MaxCustomers = 3, Patience = 42f, MaxExtras = 4, Meats = SoloEsquites, RushChance = 0.2f, PowerUps = P4, Specials = S3, SpecialChance = 0.2f,
+                Intro = "Noche de antojo: todos quieren esquite o elote asado. Cuida que no se te vacíen.",
+                Stars = new[] { 135, 310, 535 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Elotes, Name = "Feria del pueblo", Description = "Mucha gente con prisa y clientes especiales.",
+                MaxCustomers = 3, Patience = 40f, MinExtras = 2, MaxExtras = 4, Meats = TodoElotes, RushChance = 0.3f, PowerUps = P4, Specials = S3, SpecialChance = 0.25f,
+                Intro = "¡Feria del pueblo! Llega gente de todos lados. Que no se te olvide la mayonesa.",
+                Stars = new[] { 145, 325, 560 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Elotes, Name = "La maestra Chela", Description = "Turno de 2 minutos con todo y la jefa final.",
+                Duration = 120f, MaxCustomers = 3, Patience = 40f, MinExtras = 2, MaxExtras = 4, RushChance = 0.3f, Meats = TodoElotes, PowerUps = P4, Specials = S3, SpecialChance = 0.25f,
+                BossAt = 40f, BossName = "la maestra Chela, la más exigente de la escuela",
+                Intro = "Hoy viene la maestra Chela: pide 3 elotes, uno tras otro, y revisa que la mayonesa vaya primero. Si se va enojada, no hay estrellas.",
+                Stars = new[] { 300, 605, 915 }, GapMin = 2.5f, GapMax = 4.5f, LateAfter = 80f
+            },
+        };
+
         /// <summary>Todas las misiones de la campaña, mundo tras mundo (12 por mundo). El guardado usa este orden.</summary>
-        public static readonly LevelConfig[][] Worlds = { Zona1, Garnachas };
+        public static readonly LevelConfig[][] Worlds = { Zona1, Garnachas, Elotes };
 
         /// <summary>Los 3 turnos del prototipo T1 (las primeras 3 misiones).</summary>
         public static readonly LevelConfig[] Turnos = { Zona1[0], Zona1[1], Zona1[2] };
@@ -318,5 +415,31 @@ namespace Tacos.Logic
             { Id = "paisa", Name = "El Paisa", Perk = "Calienta 4 tortillas a la vez en el domo.", ComalSlots = 4 };
 
         public static readonly TaqueroDef[] Starters = { Guero, Tio, Paisa };
+
+        // Cada puesto tiene sus propios cocineros. Van en el mismo orden que los taqueros (mismo lugar = misma ventaja),
+        // asi el que elegiste en un mundo es "el mismo" en el siguiente.
+        public static readonly TaqueroDef[] Garnacheros =
+        {
+            new TaqueroDef { Id = "chata", Name = "La Chata", Perk = "Rellena las cazuelas 20 % más rápido.", CookMultiplier = 0.8f },
+            new TaqueroDef { Id = "mago", Name = "Doña Mago", Perk = "Los clientes tienen 20 % más paciencia.", PatienceMultiplier = 1.2f },
+            new TaqueroDef { Id = "beto", Name = "El Beto", Perk = "Cuece 4 masas a la vez en el comal.", ComalSlots = 4 }
+        };
+        public static readonly TaqueroDef[] Eloteros =
+        {
+            new TaqueroDef { Id = "yesi", Name = "La Yesi", Perk = "Rellena las ollas 20 % más rápido.", CookMultiplier = 0.8f },
+            new TaqueroDef { Id = "cheto", Name = "Don Cheto", Perk = "Los clientes tienen 20 % más paciencia.", PatienceMultiplier = 1.2f },
+            // aqui no hay comal: el tercero tiene un poco de los dos
+            new TaqueroDef { Id = "chuy", Name = "El Chuy", Perk = "Ollas 10 % más rápido y clientes 10 % más pacientes.", CookMultiplier = 0.9f, PatienceMultiplier = 1.1f }
+        };
+
+        public static TaqueroDef[] For(Stall s) => s == Stall.Garnachas ? Garnacheros : s == Stall.Elotes ? Eloteros : Starters;
+
+        /// <summary>El lugar (0, 1 o 2) de un cocinero en la lista de su puesto.</summary>
+        public static int SlotOf(TaqueroDef t)
+        {
+            foreach (var list in new[] { Starters, Garnacheros, Eloteros })
+                for (int i = 0; i < list.Length; i++) if (list[i] == t || list[i].Id == t.Id) return i;
+            return 0;
+        }
     }
 }

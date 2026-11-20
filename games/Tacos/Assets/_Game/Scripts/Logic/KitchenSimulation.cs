@@ -137,7 +137,7 @@ namespace Tacos.Logic
             for (int i = 0; i < Plates.Length; i++)
             {
                 Plates[i] = new Plate();
-                Plates[i].Clear(!Level.NeedsTortilla); // sin comal, los platos ya traen tortilla
+                ClearPlate(Plates[i]); // sin comal, los platos ya traen tortilla
             }
             _spawnTimer = Rules.FirstCustomerDelay;
             _pickupTimer = NextPickupGap();
@@ -322,8 +322,10 @@ namespace Tacos.Logic
             int k = min + _rng.Next(max - min + 1);
             var extras = Extra.None;
             for (int i = 0; i < k; i++) extras |= pool[i];
+            if ((extras & def.NeedsFirst) != 0) extras |= def.First; // nadie pide queso sin su mayonesa
             var bases = Level.OrderBases;
-            var b = bases.Length == 1 ? bases[0] : bases[_rng.Next(bases.Length)]; // con una sola base no se gasta azar (la taqueria queda igual)
+            var b = def.AutoBase ? def.BaseFor(meat)
+                  : bases.Length == 1 ? bases[0] : bases[_rng.Next(bases.Length)]; // con una sola base no se gasta azar (la taqueria queda igual)
             return new Order(b, meat, extras);
         }
 
@@ -346,7 +348,7 @@ namespace Tacos.Logic
                 case CommandType.ToggleExtra: return ToggleExtra((Extra)cmd.Arg);
                 case CommandType.TrashPlate:
                     if (!ValidIndex(cmd.Arg, Plates.Length)) return CommandResult.InvalidArgument;
-                    Plates[cmd.Arg].Clear(!Level.NeedsTortilla);
+                    ClearPlate(Plates[cmd.Arg]);
                     return CommandResult.Ok;
                 case CommandType.Deliver: return Deliver(cmd.Arg);
                 case CommandType.TakePickup: return TakePickup();
@@ -410,15 +412,24 @@ namespace Tacos.Logic
             return CommandResult.Ok;
         }
 
+        /// <summary>Plato vacio: con tortilla si no hay comal; en los elotes la base la pone lo principal.</summary>
+        void ClearPlate(Plate p)
+        {
+            if (Level.StallDef.AutoBase) p.Clear(Base.None);
+            else p.Clear(!Level.NeedsTortilla);
+        }
+
         CommandResult ServeMeat(Meat meat)
         {
             var pot = Pot(meat);
             if (pot == null) return CommandResult.InvalidArgument;
             if (pot.IsRefilling) return CommandResult.PotRefilling;
             if (pot.Portions <= 0) return CommandResult.PotEmpty;
-            int p = Destination(pl => pl.Tortilla && !pl.HasMeat);
+            bool auto = Level.StallDef.AutoBase;
+            int p = Destination(pl => (pl.Tortilla || auto) && !pl.HasMeat);
             if (p < 0)
                 return FindPlate(pl => !pl.HasMeat) >= 0 ? CommandResult.NeedTortillaFirst : CommandResult.PlatesFull;
+            if (auto) Plates[p].Base = Level.StallDef.BaseFor(meat);
             Plates[p].Meat = meat;
             SelectedPlate = p;
             pot.Portions--;
@@ -431,7 +442,14 @@ namespace Tacos.Logic
             if (Array.IndexOf(def.AllExtras, e) < 0) return CommandResult.InvalidArgument;
             var pl = Plates[SelectedPlate];
             if (!pl.HasMeat) return CommandResult.NeedMeatFirst;
-            if ((pl.Extras & e) != 0) { pl.Extras &= ~e; return CommandResult.Ok; }
+            if ((pl.Extras & e) != 0)
+            {
+                // la mayonesa no se quita si ya tiene queso o chile encima
+                if (e == def.First && (pl.Extras & def.NeedsFirst) != 0) return CommandResult.FirstMayo;
+                pl.Extras &= ~e;
+                return CommandResult.Ok;
+            }
+            if ((e & def.NeedsFirst) != 0 && (pl.Extras & def.First) == 0) return CommandResult.FirstMayo;
             var one = def.OneOfMask;
             if ((e & one) != 0 && (pl.Extras & one) != 0) return CommandResult.OneSalsaOnly;
             pl.Extras |= e;
@@ -454,7 +472,7 @@ namespace Tacos.Logic
                 if (!Plates[SelectedPlate].HasMeat) return CommandResult.NoPlateReady;
                 p = SelectedPlate;
             }
-            Plates[p].Clear(!Level.NeedsTortilla);
+            ClearPlate(Plates[p]);
             if (correct)
             {
                 c.Remaining--;

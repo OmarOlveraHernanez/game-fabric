@@ -38,6 +38,9 @@ namespace Tacos
                 case Logic.Meat.Tinga: return Get("ing_tinga");
                 case Logic.Meat.PapaChorizo: return Get("ing_papa");
                 case Logic.Meat.Frijoles: return Get("ing_frijoles");
+                case Logic.Meat.Elote: return Get("ing_elote");
+                case Logic.Meat.Esquite: return Get("ing_esquite");
+                case Logic.Meat.EloteAsado: return Get("ing_asado");
                 default: return null;
             }
         }
@@ -53,8 +56,11 @@ namespace Tacos
                 case Logic.Extra.SalsaRoja: return Get("ing_salsa_roja");
                 case Logic.Extra.Limon: return Get("ing_limon");
                 case Logic.Extra.Crema: return Get("ing_crema");
-                case Logic.Extra.Queso: return Get("ing_queso");
+                case Logic.Extra.Queso: return Get(Stall == Logic.Stall.Elotes ? "ing_queso_seco" : "ing_queso");
                 case Logic.Extra.Lechuga: return Get("ing_lechuga");
+                case Logic.Extra.Mayonesa: return Get("ing_mayonesa");
+                case Logic.Extra.ChilePolvo: return Get("ing_chilepolvo");
+                case Logic.Extra.Picante: return Get("ing_picante");
                 default: return null;
             }
         }
@@ -63,6 +69,7 @@ namespace Tacos
         public static Sprite Base(Base b, bool golden)
         {
             string n = b == Logic.Base.Sope ? "sope" : b == Logic.Base.Gordita ? "gordita" : b == Logic.Base.Quesadilla ? "quesadilla" : null;
+            if (b == Logic.Base.Palito || b == Logic.Base.Vaso) return null; // en los elotes la base ya viene en el dibujo
             if (n == null) return Get("ing_tortilla");
             return Get("base_" + n + (golden ? "_lista" : ""));
         }
@@ -70,8 +77,20 @@ namespace Tacos
         /// <summary>El puesto que se esta jugando (cambia el dibujo de los power-ups).</summary>
         public static Stall Stall = Stall.Taqueria;
 
+        /// <summary>Lo que se ve en la boca de cada olla del carrito de elotes.</summary>
+        public static Sprite Pot(Meat m) =>
+            m == Logic.Meat.Elote ? Get("olla_elotes") : m == Logic.Meat.Esquite ? Get("olla_esquite") : m == Logic.Meat.EloteAsado ? Get("olla_tuetano") : Meat(m);
+
         public static Sprite PowerUp(PowerUp p)
         {
+            if (Stall == Logic.Stall.Elotes)
+                switch (p)
+                {
+                    case Logic.PowerUp.Cebollitas: return Get("pw_elote_oro");
+                    case Logic.PowerUp.Nopal: return Get("pw_raspado");
+                    case Logic.PowerUp.Salsa: return Get("pw_chilito");
+                    case Logic.PowerUp.Trompo: return Get("pw_olla");
+                }
             if (Stall == Stall.Garnachas)
                 switch (p)
                 {
@@ -102,7 +121,8 @@ namespace Tacos
         public static Sprite Boss(Stall s, float patienceRatio)
         {
             string mood = patienceRatio > 0.6f ? "contento" : patienceRatio > 0.3f ? "espera" : "enojado";
-            return Get($"jefe_{(s == Logic.Stall.Garnachas ? "garnachas" : "taqueria")}_{mood}");
+            string who = s == Logic.Stall.Garnachas ? "garnachas" : s == Logic.Stall.Elotes ? "elotes" : "taqueria";
+            return Get($"jefe_{who}_{mood}");
         }
 
         /// <summary>Cara del cliente segun su paciencia: contento, esperando o enojado.</summary>
@@ -130,6 +150,10 @@ namespace Tacos
         public readonly AudioClip Quemado = Load("sfx_quemado", 300f, 110f, 0.4f, Wave.Noise);
         public readonly AudioClip Click = Load("sfx_click", 1100f, 1100f, 0.04f, Wave.Sine);
         public readonly AudioClip Fin = Load("sfx_fin", 440f, 880f, 0.5f, Wave.Triangle);
+        public readonly AudioClip PowerUpCae = Load("sfx_powerup_cae", 2400f, 1600f, 0.4f, Wave.Sine);
+        public readonly AudioClip PowerUp = Load("sfx_powerup", 1000f, 2600f, 0.5f, Wave.Sine);
+        public readonly AudioClip Jefe = Load("sfx_jefe", 262f, 349f, 0.9f, Wave.Square);
+        public readonly AudioClip Estrella = Load("sfx_estrella", 1320f, 2490f, 0.35f, Wave.Sine);
         public readonly AudioClip MusicMenu = Resources.Load<AudioClip>("Audio/musica_menu");
         public readonly AudioClip MusicGame = Resources.Load<AudioClip>("Audio/musica_partida");
 

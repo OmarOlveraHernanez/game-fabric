@@ -24,7 +24,7 @@ namespace Tacos
         {
             new ZoneDef { Name = "Mundo 1 · Taquería", Island = "isla_callejero", Stars = 0, Chiles = 1, Ready = true },
             new ZoneDef { Name = "Mundo 2 · Garnachas", Island = "isla_garnachas", Stars = 24, Chiles = 2, Ready = true },
-            new ZoneDef { Name = "Mundo 3 · Elotes", Island = "isla_elotes", Stars = 50, Chiles = 3 },
+            new ZoneDef { Name = "Mundo 3 · Elotes", Island = "isla_elotes", Stars = 50, Chiles = 3, Ready = true },
             new ZoneDef { Name = "Mundo 4 · Pozolería", Island = "isla_pozole", Stars = 76, Chiles = 3 },
             new ZoneDef { Name = "Mundo 5 · Tamales", Island = "isla_tamales", Stars = 100, Chiles = 4 },
             new ZoneDef { Name = "Mundo 6 · La Feria", Island = "isla_feria", Stars = 125, Chiles = 5 },
@@ -39,11 +39,30 @@ namespace Tacos
         Text _tapToEnter;
 
         // calle de misiones
-        static readonly Vector2[] MissionSpots =
+        // Cada mundo tiene su calle de misiones: dibujo de fondo y donde va cada una de las 12 (pixeles de ese dibujo)
+        static readonly string[] StreetArt = { "mapa_zona1", "mapa_garnachas", "mapa_elotes" };
+        static readonly Vector2[][] WorldSpots =
         {
-            new Vector2(318, 765), new Vector2(421, 716), new Vector2(525, 666), new Vector2(615, 603), new Vector2(670, 502), new Vector2(734, 412),
-            new Vector2(840, 368), new Vector2(945, 323), new Vector2(1051, 279), new Vector2(1156, 234), new Vector2(1261, 188), new Vector2(1365, 140)
+            new[]
+            {
+                new Vector2(318, 765), new Vector2(421, 716), new Vector2(525, 666), new Vector2(615, 603), new Vector2(670, 502), new Vector2(734, 412),
+                new Vector2(840, 368), new Vector2(945, 323), new Vector2(1051, 279), new Vector2(1156, 234), new Vector2(1261, 188), new Vector2(1365, 140)
+            },
+            // Tianguis de garnachas: las plataformas de piedra del caminito (la 2 va entre las dos primeras)
+            new[]
+            {
+                new Vector2(198, 770), new Vector2(322, 764), new Vector2(448, 730), new Vector2(430, 650), new Vector2(602, 568), new Vector2(773, 483),
+                new Vector2(884, 391), new Vector2(1035, 334), new Vector2(1176, 252), new Vector2(1331, 205), new Vector2(1316, 132), new Vector2(1410, 100)
+            },
+            // Plaza de los elotes: las 9 plataformas del caminito y 3 lugares entre ellas
+            new[]
+            {
+                new Vector2(75, 800), new Vector2(174, 756), new Vector2(272, 712), new Vector2(478, 642), new Vector2(579, 603), new Vector2(680, 565),
+                new Vector2(869, 483), new Vector2(958, 443), new Vector2(1048, 403), new Vector2(1222, 330), new Vector2(1115, 258), new Vector2(1294, 195)
+            }
         };
+        Vector2[] MissionSpots => WorldSpots[Mathf.Min(_playWorld, WorldSpots.Length - 1)];
+        int _zoneBuiltFor = -1;
         readonly List<Image> _nodeDisc = new List<Image>(), _nodeGlow = new List<Image>();
         readonly List<Text> _nodeNum = new List<Text>();
         readonly List<Image[]> _nodeStars = new List<Image[]>();
@@ -201,7 +220,7 @@ namespace Tacos
         void BuildZone()
         {
             _zone = UiKit.Stretch(UiKit.NewRect("CalleMisiones", _root));
-            _zoneStage = new Stage(_zone, "Calle", TacosArt.Get("mapa_zona1"), 1536, 864, Stage.Fit.Cover);
+            _zoneStage = new Stage(_zone, "Calle", TacosArt.Get(StreetArt[Mathf.Min(_playWorld, StreetArt.Length - 1)]), 1536, 864, Stage.Fit.Cover);
             var st = _zoneStage;
 
             // Caminito de puntos entre misiones
@@ -235,11 +254,11 @@ namespace Tacos
             }
 
             // Encabezado
-            var back = UiKit.MakeButton(_zone, "AlMapa", "‹ Zonas", new Color(0.08f, 0.07f, 0.12f, 0.88f), UiKit.Cream, 26, ShowWorld);
+            var back = UiKit.MakeButton(_zone, "AlMapa", "‹ Mundos", new Color(0.08f, 0.07f, 0.12f, 0.88f), UiKit.Cream, 26, ShowWorld);
             Corner((RectTransform)back.transform, new Vector2(0f, 1f), new Vector2(18f, -16f), new Vector2(170f, 62f));
             var title = UiKit.Panel(_zone, "Titulo", new Color(0.08f, 0.07f, 0.12f, 0.88f), true, false);
             Corner(title.rectTransform, new Vector2(0f, 1f), new Vector2(200f, -16f), new Vector2(430f, 62f));
-            UiKit.FillLabel(title.transform, "Zona 1 · Puesto callejero", 26, UiKit.Maiz, TextAnchor.MiddleCenter, 4f);
+            UiKit.FillLabel(title.transform, Zones[Mathf.Min(_playWorld, Zones.Length - 1)].Name, 26, UiKit.Maiz, TextAnchor.MiddleCenter, 4f);
             BuildWallet(_zone, out _zoneStars, out _zoneWallet);
             var shop = UiKit.MakeButton(_zone, "Tienda", "Mejoras", UiKit.Turq, UiKit.Ink, 26, ShowShop);
             Corner((RectTransform)shop.transform, new Vector2(1f, 1f), new Vector2(-410f, -16f), new Vector2(170f, 62f));
@@ -288,9 +307,10 @@ namespace Tacos
                 _cardPowers.Add(p);
             }
 
-            for (int i = 0; i < TaqueroDef.Starters.Length; i++)
+            var cooks = TaqueroDef.For(Missions[0].Stall); // cada puesto con sus cocineros
+            for (int i = 0; i < cooks.Length; i++)
             {
-                var taq = TaqueroDef.Starters[i];
+                var taq = cooks[i];
                 var b = UiKit.MakeButton(t, "Taquero " + taq.Id, null, UiKit.Panel2, UiKit.Cream, 20, () => { _taq = taq; RefreshZone(); });
                 UiKit.TopLeft((RectTransform)b.transform, 24f + i * 106f, 244f, 96f, 116f);
                 var face = UiKit.Picture(b.transform, "Retrato", TacosArt.Taquero(taq.Id, TacosArt.Pose.Quieto));
@@ -307,7 +327,10 @@ namespace Tacos
                 StartTurn();
             });
             UiKit.TopLeft((RectTransform)how.transform, 440f, 14f, 180f, 40f);
-            var go = UiKit.MakeButton(t, "ATaquear", "¡A TAQUEAR!", UiKit.Chile, Color.white, 30, StartTurn);
+            // cada puesto con su grito (la calle se arma de nuevo al cambiar de mundo)
+            var stall = Missions[0].Stall;
+            string grito = stall == Stall.Garnachas ? "¡A GARNACHEAR!" : stall == Stall.Elotes ? "¡A ELOTEAR!" : "¡A TAQUEAR!";
+            var go = UiKit.MakeButton(t, "ATaquear", grito, UiKit.Chile, Color.white, 30, StartTurn);
             UiKit.TopLeft((RectTransform)go.transform, 350f, 292f, 266f, 70f);
         }
 
@@ -321,8 +344,23 @@ namespace Tacos
             RefreshWorld();
         }
 
+        /// <summary>Al cambiar de mundo se arma la calle de ese mundo (su dibujo y sus 12 lugares).</summary>
+        void EnsureZone()
+        {
+            if (_zoneBuiltFor == _playWorld) return;
+            int index = _zone != null ? _zone.GetSiblingIndex() : -1;
+            if (_zone != null) UnityEngine.Object.Destroy(_zone.gameObject);
+            _nodeDisc.Clear(); _nodeGlow.Clear(); _nodeNum.Clear(); _nodeStars.Clear();
+            _cardMeats.Clear(); _cardPowers.Clear(); _cardTaqueros.Clear();
+            BuildZone();
+            if (index >= 0) _zone.SetSiblingIndex(index);
+            _zoneBuiltFor = _playWorld;
+        }
+
         void ShowZone()
         {
+            EnsureZone();
+            _taq = TaqueroDef.For(Missions[0].Stall)[TaqueroDef.SlotOf(_taq)]; // el mismo lugar con el cocinero de este puesto
             _sim = null;
             _tutorial.End();
             ShowScreen(_zone);
@@ -405,7 +443,7 @@ namespace Tacos
                 _cardPowers[i].enabled = _cardPowers[i].sprite != null;
             }
             for (int i = 0; i < _cardTaqueros.Count; i++)
-                UiKit.Highlight(_cardTaqueros[i], UiKit.Turq, TaqueroDef.Starters[i] == _taq);
+                UiKit.Highlight(_cardTaqueros[i], UiKit.Turq, TaqueroDef.For(Missions[0].Stall)[i] == _taq);
             _cardPerk.text = $"{_taq.Name}: {_taq.Perk}";
         }
 

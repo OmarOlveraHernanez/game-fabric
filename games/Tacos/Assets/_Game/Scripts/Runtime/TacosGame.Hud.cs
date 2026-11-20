@@ -218,9 +218,9 @@ namespace Tacos
             _cutSub.text = $"{_taq.Name}: {PowerUps.Effect(p, TacosArt.Stall)}";
             _cutT = 0f;
             _paused = true;
+            Audio.PlaySfx(_snd.PowerUp);
             _cutIn.gameObject.SetActive(true);
             _cutIn.SetAsLastSibling();
-            Audio.PlaySfx(_snd.Fin);
         }
 
         void UpdateCutIn()

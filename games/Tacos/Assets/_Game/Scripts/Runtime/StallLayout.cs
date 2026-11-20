@@ -24,9 +24,13 @@ namespace Tacos
         public Vector2[] Bowls;              // cazos o cazuelas de lo principal
         public Meat[] BowlMeat;
         public Vector2 HeapSize = new Vector2(106, 70);
+        public Vector2[] HeapSizes;          // tamano de lo de cada olla (si cambia por olla); se estira a la boca de la olla
+        public Vector2 PlateMeat = new Vector2(88, 46); // lo principal ya servido en el plato (masas, elotes)
         public bool BowlCover;
+        public bool PaintedFull;             // las ollas ya vienen llenas en el dibujo (y en el video): solo se tapan al vaciarse
         public string FullPots;              // prefijo del dibujo de la cazuela completa ("cazuela_" + guisado), null = monton encima
-        public bool ExtraLabels;             // nombre abajo de cada cazuelita de extras               // la cazuela del dibujo ya trae comida: se tapa cuando se vacia
+        public bool ExtraLabels;             // nombre abajo de cada cazuelita de extras
+        public Extra LabelUp;                // estos llevan el nombre arriba (si abajo hay otra cosa)               // la cazuela del dibujo ya trae comida: se tapa cuando se vacia
 
         public (Base Base, Rect Area, string Art)[] Stacks; // de donde se toman las bases (Art null = ya viene en el dibujo)
         public Rect RawTray;                 // charola de carne cruda (ancho 0 = no hay)
@@ -49,6 +53,8 @@ namespace Tacos
         public (string, float, float, float, float)[] Garnish = new (string, float, float, float, float)[0];
         public bool Upgrades;                // radio y domo de fierro (dibujados para la taqueria)
         public Vector2 FxDome, FxBase = new Vector2(-1, -1);
+        public (Vector2 At, float Width, int Bowl)[] AmbientSteam; // vapor continuo por codigo (si no hay video)
+        public Rect Embers;                                        // brasas que titilan (ancho 0 = no hay)
 
         static Rect R(float cx, float cy, float w, float h) => Stage.R(cx, cy, w, h);
 
@@ -118,6 +124,34 @@ namespace Tacos
             }
         };
 
-        public static StallLayout For(Stall s) => s == Stall.Garnachas ? Garnachas : Taqueria;
+        /// <summary>Mundo 3: el carrito de elotes. Olla de elotes, cazo de esquite y anafre de asados, ya pintados llenos; no hay comal.</summary>
+        public static readonly StallLayout Elotes = new StallLayout
+        {
+            Stall = Stall.Elotes, Background = "barra_elotes", CropBottom = 110f,
+            Bowls = new[] { new Vector2(178, 420), new Vector2(500, 466), new Vector2(815, 488) },
+            BowlMeat = new[] { Meat.Elote, Meat.Esquite, Meat.EloteAsado },
+            // El dibujo ya trae las ollas llenas: cuando se vacian se tapa la boca con su fondo (agua, caldo, carbon)
+            HeapSizes = new[] { new Vector2(360, 160), new Vector2(290, 118), new Vector2(250, 160) }, PaintedFull = true,
+            Stacks = new (Base, Rect, string)[0],
+            Comal2 = new[] { new Vector2(-400, -400), new Vector2(-400, -400) },
+            Comal4 = new[] { new Vector2(-400, -400), new Vector2(-400, -400), new Vector2(-400, -400), new Vector2(-400, -400) },
+            ComalDrop = R(-400, -400, 10, 10), HotLabel = new Vector2(-400, -400), BaseKeepsAspect = true,
+            PlateSpots = new[] { new Vector2(1088, 478), new Vector2(1088, 568), new Vector2(1088, 658) }, PlateArt = "plato",
+            PlateMeat = new Vector2(170, 96),
+            CounterTop = 386f, // la orilla del cazo y del anafre: la gente se para detras
+            LabelUp = Extra.Queso, // su nombre arriba de la charola (abajo estan los limones)
+            TrashArea = R(1430, 800, 200, 140), TrashArt = false,
+            Extras = new Dictionary<Extra, Vector2>
+            {
+                { Extra.Mayonesa, new Vector2(1196, 448) }, { Extra.Queso, new Vector2(1360, 435) }, { Extra.ChilePolvo, new Vector2(1252, 538) },
+                { Extra.Limon, new Vector2(1380, 552) }, { Extra.Picante, new Vector2(1495, 490) }
+            },
+            ExtraLabels = true, FxDome = new Vector2(-400, -400),
+            // Animado por codigo (el usuario prefirio esto a pagar Weave): vapor de las ollas y brasas del anafre
+            AmbientSteam = new[] { (new Vector2(175, 390), 260f, 0), (new Vector2(500, 440), 200f, 1), (new Vector2(815, 440), 150f, 2) },
+            Embers = R(812, 548, 300, 70)
+        };
+
+        public static StallLayout For(Stall s) => s == Stall.Garnachas ? Garnachas : s == Stall.Elotes ? Elotes : Taqueria;
     }
 }
