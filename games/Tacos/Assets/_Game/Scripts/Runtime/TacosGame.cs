@@ -83,7 +83,7 @@ namespace Tacos
                 _data.version = 3;
                 _saveFile.Save(_data);
             }
-            _taq = Array.Find(TaqueroDef.Starters, t => t.Id == _data.taquero) ?? TaqueroDef.Guero;
+            _taq = Array.Find(TaqueroDef.Starters, t => t.Id == _data.taquero) ?? TaqueroDef.Guero; // se guarda el lugar como taquero
             _mission = FirstOpenMission();
 
             var canvas = UiKit.CreateCanvas("TacosCanvas", 10);
@@ -98,6 +98,7 @@ namespace Tacos
             BuildGame();
             BuildWorld();
             BuildZone();
+            _zoneBuiltFor = _playWorld;
             BuildShop();
             BuildEnd();
             ShowWorld();
@@ -189,7 +190,12 @@ namespace Tacos
             "¡Qué rica garnacha!", "¡Uy, bien doradita!", "¡Así como en mi pueblo!", "¡Está de rechupete!", "¡Con todo y crema, qué rico!",
             "¡Qué buena sazón!", "¡Bien calientita!", "¡Mmm, ya me hacía falta!", "¡Esto sí es comida!", "¡Gracias, marchanta!"
         };
-        static string[] Reactions(Stall s) => s == Stall.Garnachas ? SaidGarnachas : SaidTacos;
+        static readonly string[] SaidElotes =
+        {
+            "¡Qué rico elotito!", "¡Bien preparado, como me gusta!", "¡Con harta mayonesa, eso!", "¡Uy, del que pica!", "¡Sabe a domingo en la plaza!",
+            "¡Calientito, qué rico!", "¡Así se preparan!", "¡Gracias, joven!", "¡El mejor esquite de la plaza!", "¡Mmm, con su limoncito!"
+        };
+        static string[] Reactions(Stall s) => s == Stall.Garnachas ? SaidGarnachas : s == Stall.Elotes ? SaidElotes : SaidTacos;
 
         static string BaseName(Base b) => b == Base.Gordita ? "una gordita" : b == Base.Quesadilla ? "una quesadilla" : b == Base.Sope ? "un sope" : "una tortilla";
 
@@ -199,7 +205,8 @@ namespace Tacos
         void StartTurn()
         {
             if (!Unlocked(_mission)) return;
-            _data.taquero = _taq.Id;
+            _data.taquero = TaqueroDef.Starters[TaqueroDef.SlotOf(_taq)].Id;
+            _taq = TaqueroDef.For(Missions[_mission].Stall)[TaqueroDef.SlotOf(_taq)];
             _sim = new KitchenSimulation(Missions[_mission], _taq, Environment.TickCount, P.BuildRules(null, Missions[_mission].Stall));
             TacosArt.Stall = _sim.Level.Stall;
             for (int i = 0; i < PowerUps.All.Length && i < _powerIcons.Length; i++) _powerIcons[i].sprite = TacosArt.PowerUp(PowerUps.All[i]);
@@ -231,7 +238,7 @@ namespace Tacos
                 // Entrada del jefe final: aviso grande y la cumbia se detiene un instante (reusa el corte de power-up)
                 Toast($"¡Llegó {_sim.Level.BossName}! Pide {_sim.Level.BossItems} platos", UiKit.Maiz);
                 _scene.Popup("¡JEFE FINAL!", _scene.CustomerPoint(slot) + new Vector2(0f, -110f), UiKit.Chile, 46);
-                Audio.PlaySfx(_snd.Fin, 0.8f);
+                Audio.PlaySfx(_snd.Jefe, 0.9f);
                 _scene.Shake();
             };
             _sim.BossServed += () =>
@@ -244,12 +251,12 @@ namespace Tacos
             _sim.PotRefilled += m => Audio.PlaySfx(_snd.Listo, 0.6f);
             _sim.OrderChanged += slot => { _scene.Popup("¡Siempre no, mejor otro!", _scene.CustomerPoint(slot), new Color32(0xFF, 0xB0, 0x5A, 0xFF), 26); Audio.PlaySfx(_snd.Cliente, 0.8f); };
             _sim.StreakBroken += n => _scene.Popup($"Se rompió la racha de {n}", new Vector2(768, 300), UiKit.Chile, 28);
-            _sim.PickupSpawned += p => Audio.PlaySfx(_snd.Listo, 0.8f);
+            _sim.PickupSpawned += p => Audio.PlaySfx(_snd.PowerUpCae, 0.8f);
             _sim.PowerUpGained += OnPowerUpGained;
             _sim.PowerUpUsed += OnPowerUpUsed;
             _sim.Finished += EndTurn;
-            bool garn = _sim.Level.Stall == Stall.Garnachas;
-            _scene.Setup(_sim, P.Owns(Upgrade.Paciencia), P.Owns(Upgrade.ComalRapido), P.Owns(garn ? Upgrade.GarCazuelas : Upgrade.Plancha3));
+            var big = _sim.Level.Stall == Stall.Garnachas ? Upgrade.GarCazuelas : _sim.Level.Stall == Stall.Elotes ? Upgrade.EloOllota : Upgrade.Plancha3;
+            _scene.Setup(_sim, P.Owns(Upgrade.Paciencia), P.Owns(Upgrade.ComalRapido), P.Owns(big));
             SetupHud();
             ShowScreen(_game);
             _toastTime = 0f;
@@ -334,6 +341,7 @@ namespace Tacos
                 case CommandResult.PlatesFull: return "Los platos ya tienen carne: entrega o tira uno";
                 case CommandResult.NeedMeatFirst: return "Primero pon la carne en el plato";
                 case CommandResult.OneSalsaOnly: return "Una sola salsa por taco";
+                case CommandResult.FirstMayo: return "¡Primero la mayonesa! Si no, no se pega";
                 case CommandResult.NoPlateReady: return "Ningún plato está listo para este cliente";
                 case CommandResult.NoPowerUp: return "Todavía no tienes ese power-up: llena tu racha";
                 case CommandResult.PowerUpActive: return "Ya está funcionando";
@@ -399,6 +407,9 @@ namespace Tacos
                 case Extra.Crema: return "Crema";
                 case Extra.Queso: return "Queso";
                 case Extra.Lechuga: return "Lechuga";
+                case Extra.Mayonesa: return "Mayonesa";
+                case Extra.ChilePolvo: return "Chile en polvo";
+                case Extra.Picante: return "Salsa picante";
                 default: return e.ToString();
             }
         }
@@ -409,6 +420,8 @@ namespace Tacos
             {
                 case HintKind.WaitCustomer: return "Espera tantito, ya viene el siguiente cliente…";
                 case HintKind.ServeMeat: return h.Meat == Meat.Pastor ? "Mira su globito: quiere pastor. Arrastra la carne del trompo al plato."
+                    : h.Meat == Meat.Elote ? "Quiere elote: arrástralo de la olla grande a la charolita."
+                    : h.Meat == Meat.Esquite || h.Meat == Meat.EloteAsado ? $"Quiere {KitchenScene.MeatName(h.Meat).ToLower()}: arrástralo de su olla a la charolita."
                     : h.Meat >= Meat.Chicharron ? $"Quiere {KitchenScene.MeatName(h.Meat).ToLower()}: arrastra el guisado de su cazuela a la masa."
                     : $"Quiere {KitchenScene.MeatName(h.Meat).ToLower()}: arrastra la carne de su cazo al plato.";
                 case HintKind.RefillMeat: return h.Meat == Meat.Pastor ? "Se acabó el pastor: toca el trompo para rebanar más." : "Ese cazo está vacío: tócalo para rellenarlo.";
@@ -421,9 +434,11 @@ namespace Tacos
                 case HintKind.FlipItem: return "¡Ya se doró de abajo! Tócala para voltearla.";
                 case HintKind.TakeTortilla: return _sim != null && _sim.Level.Stall == Stall.Garnachas ? "¡Ya quedó de los dos lados! Arrástrala al plato." : "¡Ya brilla! Arrástrala al plato.";
                 case HintKind.SelectPlate: return "Toca este plato para trabajar en él.";
-                case HintKind.AddExtra: return $"Ahora lo que pide encima: arrastra la cazuelita de {ExtraName(h.Extra).ToLower()} al plato.";
+                case HintKind.AddExtra:
+                    if (h.Extra == Extra.Mayonesa) return "¡Primero la mayonesa! Arrástrala al elote; si no, el queso y el chile no se pegan.";
+                    return $"Ahora lo que pide encima: arrastra {ExtraName(h.Extra).ToLower()} al plato.";
                 case HintKind.TrashPlate: return "Ese plato no le sirve a nadie: arrástralo al bote.";
-                case HintKind.Deliver: return _sim != null && _sim.Level.Stall == Stall.Garnachas ? "¡Ya quedó! Arrastra el plato al cliente." : "¡Ya quedó! Arrastra el plato al cliente para entregarle su taco.";
+                case HintKind.Deliver: return _sim != null && _sim.Level.Stall != Stall.Taqueria ? "¡Ya quedó! Arrastra el plato al cliente." : "¡Ya quedó! Arrastra el plato al cliente para entregarle su taco.";
                 default: return "";
             }
         }

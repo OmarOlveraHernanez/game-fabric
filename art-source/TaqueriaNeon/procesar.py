@@ -245,3 +245,19 @@ sheet('garnachas_cazuelas.png', 'magenta', 3, 2, ['cazuela_chicharron', 'cazuela
 sheet('garnachas_pilas.png', 'magenta', 3, 1, ['pila_sope', 'pila_gordita', 'pila_quesadilla'], 260, 300)
 # Pantalla de resultados: cartel con foquitos, liston, botones de madera pintada y hueco de estrella
 sheet('ui_resultados.png', 'magenta', 3, 2, ['ui_cartel', 'ui_liston', 'btn_verde', 'btn_madera', 'btn_rojo', 'ui_estrella_hueco'], 640, 420)
+# Calle de misiones del mundo 2 (tianguis de garnachas); las posiciones de las 12 misiones estan en TacosGame.Maps.cs
+Image.open(os.path.join(SRC, 'mapa_garnachas.png')).convert('RGB').save(os.path.join(OUT, 'mapa_garnachas.jpg'), quality=88)
+
+# ---- Mundo 3: Elotes ----
+Image.open(os.path.join(SRC, 'puestos', 'barra_elotes.png')).convert('RGB').save(os.path.join(OUT, 'barra_elotes.jpg'), quality=88)
+Image.open(os.path.join(SRC, 'mapa_elotes.png')).convert('RGB').save(os.path.join(OUT, 'mapa_elotes.jpg'), quality=88)
+cells('elotes_hoja.png', 'magenta', 4, 3, [None, None, None, None, 'ing_elote', 'ing_esquite', 'ing_tuetano', None,
+      'olla_elotes', 'olla_esquite', 'olla_tuetano', None], 300, 300)
+cells('elotes_extras.png', 'magenta', 4, 3, ['ing_mayonesa', 'ing_chilepolvo', 'ing_picante', 'ing_queso_seco',
+      'pw_elote_oro', 'pw_raspado', 'pw_chilito', 'pw_olla', 'mej_bocina', 'mej_olla_express', 'mej_carrito', 'mej_ollota'], 300, 300)
+cells('jefe_elotes.png', 'magenta', 3, 1, ['jefe_elotes_contento', 'jefe_elotes_espera', 'jefe_elotes_enojado'], 340, 340)
+# Elote asado (reemplaza al esquite de tuetano). barra_elotes ya trae las ollas llenas y el anafre.
+cells('elotes_asados.png', 'magenta', 3, 1, ['ing_asado', None, None], 300, 300)
+# Cocineros de cada puesto (fila = cocinero; columnas = quieto, cocinando, festeja)
+for hoja, ids in [('cocineros_garnachas.png', ['mago', 'chata', 'beto']), ('cocineros_elotes.png', ['cheto', 'yesi', 'chuy'])]:
+    cells(hoja, 'magenta', 3, 3, [f'{i}_{p}' for i in ids for p in ['quieto', 'cocinando', 'festeja']], 380, 560)

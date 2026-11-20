@@ -66,6 +66,7 @@ namespace Tacos.Logic
         NoPowerUp,        // no tienes ese power-up cargado
         PowerUpActive,    // ese power-up ya esta funcionando
         NeedsFlip,        // la base tiene un lado listo: hay que voltearla antes de servirla
-        AlreadyFlipped
+        AlreadyFlipped,
+        FirstMayo         // elotes: primero la mayonesa (el queso y el chile no se pegan sin ella)
     }
 }

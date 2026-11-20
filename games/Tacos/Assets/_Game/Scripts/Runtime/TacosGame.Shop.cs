@@ -100,6 +100,11 @@ namespace Tacos
                 case Upgrade.GarAguas: return "mej_aguas";
                 case Upgrade.GarComal: return "mej_comal_barro";
                 case Upgrade.GarTabla: return "mej_tabla";
+                case Upgrade.GarCazuelas: return "mej_cazuela";
+                case Upgrade.EloBocina: return "mej_bocina";
+                case Upgrade.EloOlla: return "mej_olla_express";
+                case Upgrade.EloCarrito: return "mej_carrito";
+                case Upgrade.EloOllota: return "mej_ollota";
                 default: return "mej_cazuela";
             }
         }
@@ -156,6 +161,10 @@ namespace Tacos
                 case Upgrade.GarAguas: return "Tus clientes ya tienen su agüita.";
                 case Upgrade.GarComal: return "Tu comal ahora es de barro.";
                 case Upgrade.GarTabla: return "Ya tienes otro plato en la tabla.";
+                case Upgrade.EloBocina: return "Ya suena la cumbia en el carrito.";
+                case Upgrade.EloOlla: return "Tus ollas ahora se rellenan rapidito.";
+                case Upgrade.EloCarrito: return "Ya tienes otra charolita.";
+                case Upgrade.EloOllota: return "Tus ollas ahora van bien llenas.";
                 default: return "Tus cazuelas ahora van bien llenas.";
             }
         }
@@ -171,7 +180,8 @@ namespace Tacos
             // Cada mundo tiene su tienda: los letreros muestran las mejoras de este puesto
             var world = Missions[0].Stall;
             var defs = UpgradeDef.For(world);
-            _shopTitle.text = world == Stall.Garnachas ? "Mercado · Mejoras de garnachas" : "Jarcería · Mejoras de cocina";
+            _shopTitle.text = world == Stall.Garnachas ? "Mercado · Mejoras de garnachas"
+                            : world == Stall.Elotes ? "Plaza · Mejoras del carrito" : "Jarcería · Mejoras de cocina";
             for (int i = 0; i < _shopCards.Count && i < defs.Length; i++)
             {
                 var c = _shopCards[i];

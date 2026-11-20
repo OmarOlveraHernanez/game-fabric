@@ -36,11 +36,20 @@ namespace Tacos.Logic
                     case PowerUp.Salsa: return "Salsa de molcajete";
                     case PowerUp.Trompo: return "Comal al rojo";
                 }
+            if (s == Stall.Elotes)
+                switch (p)
+                {
+                    case PowerUp.Cebollitas: return "Elote dorado";
+                    case PowerUp.Nopal: return "Raspado de limón";
+                    case PowerUp.Salsa: return "Chilito de la suerte";
+                    case PowerUp.Trompo: return "Olla hirviendo";
+                }
             return Name(p);
         }
 
         public static string Effect(PowerUp p, Stall s) =>
-            s == Stall.Garnachas && p == PowerUp.Trompo ? "cazuelas llenas y masas listas al instante" : Effect(p);
+            s == Stall.Garnachas && p == PowerUp.Trompo ? "cazuelas llenas y masas listas al instante"
+            : s == Stall.Elotes && p == PowerUp.Trompo ? "todas las ollas llenas al instante" : Effect(p);
 
         public static string Name(PowerUp p)
         {

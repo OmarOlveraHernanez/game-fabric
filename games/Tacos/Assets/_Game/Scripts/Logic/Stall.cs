@@ -23,6 +23,12 @@ namespace Tacos.Logic
         public bool Flip;               // hay que voltear la base a media coccion (garnachas)
         public float CookScale = 1f;    // la base tarda esto por el tiempo de la tortilla (por lado, si se voltea)
         public float FlipWindow = 6f;   // segundos para voltear antes de que se queme el primer lado
+        public bool AutoBase;           // la base sale de lo principal (elote en palito, esquite en vaso); no hay comal
+        public Extra First;             // extra que va antes que los demas (la mayonesa en los elotes)
+        public Extra NeedsFirst;        // los que solo se pegan si ya tiene First (queso y chile en polvo)
+
+        /// <summary>En los elotes cada cosa tiene su base: el elote y el asado en palito, el esquite en vaso.</summary>
+        public Base BaseFor(Meat m) => m == Meat.Elote || m == Meat.EloteAsado ? Base.Palito : m == Meat.Esquite ? Base.Vaso : Bases[0];
 
         /// <summary>Todos los extras del puesto en el orden en que se muestran.</summary>
         public Extra[] AllExtras
@@ -61,6 +67,17 @@ namespace Tacos.Logic
             Flip = true, CookScale = 1.25f, FlipWindow = 5f
         };
 
-        public static StallDef Get(Stall s) => s == Stall.Garnachas ? Garnachas : Taqueria;
+        /// <summary>Mundo 3: lo nuevo es EL ORDEN. Primero la mayonesa, para que se peguen el queso y el chile.</summary>
+        public static readonly StallDef Elotes = new StallDef
+        {
+            Id = Stall.Elotes, Name = "Elotes",
+            Bases = new[] { Base.Palito, Base.Vaso },
+            Mains = new[] { Meat.Elote, Meat.Esquite, Meat.EloteAsado },
+            Common = new[] { Extra.Mayonesa, Extra.Queso, Extra.ChilePolvo, Extra.Limon, Extra.Picante },
+            OneOf = new Extra[0],
+            AutoBase = true, First = Extra.Mayonesa, NeedsFirst = Extra.Queso | Extra.ChilePolvo
+        };
+
+        public static StallDef Get(Stall s) => s == Stall.Garnachas ? Garnachas : s == Stall.Elotes ? Elotes : Taqueria;
     }
 }

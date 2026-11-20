@@ -7,11 +7,13 @@ namespace Tacos.Logic
     {
         None = 0, Pastor = 1, Asada = 2, Chorizo = 3, Suadero = 4,
         // Garnachas (guisados en cazuela)
-        Chicharron = 5, Tinga = 6, PapaChorizo = 7, Frijoles = 8
+        Chicharron = 5, Tinga = 6, PapaChorizo = 7, Frijoles = 8,
+        // Elotes (ollas del carrito)
+        Elote = 9, Esquite = 10, EloteAsado = 11 // el asado sale del anafre
     }
 
     /// <summary>La base que se calienta en el comal: tortilla en la taqueria; sope, gordita o quesadilla en las garnachas.</summary>
-    public enum Base { None = 0, Tortilla = 1, Sope = 2, Gordita = 3, Quesadilla = 4 }
+    public enum Base { None = 0, Tortilla = 1, Sope = 2, Gordita = 3, Quesadilla = 4, Palito = 5, Vaso = 6 }
 
     /// <summary>Extras de un taco. Se combinan como banderas (un taco puede llevar varios).</summary>
     [Flags]
@@ -27,14 +29,22 @@ namespace Tacos.Logic
         // Garnachas
         Crema = 64,
         Queso = 128,
-        Lechuga = 256
+        Lechuga = 256,
+        // Elotes
+        Mayonesa = 512,
+        ChilePolvo = 1024,
+        Picante = 2048
     }
 
     public static class Extras
     {
         /// <summary>Todos los extras en el orden en que se muestran.</summary>
         public static readonly Extra[] All =
-            { Extra.Cebolla, Extra.Cilantro, Extra.Pina, Extra.SalsaVerde, Extra.SalsaRoja, Extra.Limon, Extra.Crema, Extra.Queso, Extra.Lechuga };
+            {
+                Extra.Cebolla, Extra.Cilantro, Extra.Pina, Extra.SalsaVerde, Extra.SalsaRoja, Extra.Limon,
+                Extra.Mayonesa, // antes que el queso y el chile: en los elotes la mayonesa va primero
+                Extra.Crema, Extra.Queso, Extra.Lechuga, Extra.ChilePolvo, Extra.Picante
+            };
 
         public const Extra Salsas = Extra.SalsaVerde | Extra.SalsaRoja;
 

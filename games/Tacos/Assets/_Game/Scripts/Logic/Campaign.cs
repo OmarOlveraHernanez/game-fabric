@@ -6,7 +6,8 @@ namespace Tacos.Logic
     public enum Upgrade
     {
         Paciencia = 0, ComalRapido = 1, TercerPlato = 2, Plancha3 = 3,             // Taqueria
-        GarAguas = 4, GarComal = 5, GarTabla = 6, GarCazuelas = 7                    // Garnachas
+        GarAguas = 4, GarComal = 5, GarTabla = 6, GarCazuelas = 7,                   // Garnachas
+        EloBocina = 8, EloOlla = 9, EloCarrito = 10, EloOllota = 11                  // Elotes
     }
 
     public sealed class UpgradeDef
@@ -27,7 +28,12 @@ namespace Tacos.Logic
             new UpgradeDef { Id = Upgrade.GarAguas, World = Stall.Garnachas, Effect = Upgrade.Paciencia, Name = "Aguas frescas", Description = "Con su agüita los clientes esperan 15 % más.", Price = 400 },
             new UpgradeDef { Id = Upgrade.GarComal, World = Stall.Garnachas, Effect = Upgrade.ComalRapido, Name = "Comal de barro", Description = "Las masas se cuecen 40 % más rápido.", Price = 450 },
             new UpgradeDef { Id = Upgrade.GarTabla, World = Stall.Garnachas, Effect = Upgrade.TercerPlato, Name = "Tabla larga", Description = "Un plato más para armar 3 garnachas a la vez.", Price = 600 },
-            new UpgradeDef { Id = Upgrade.GarCazuelas, World = Stall.Garnachas, Effect = Upgrade.Plancha3, Name = "Cazuelas hondas", Description = "Cada cazuela lleva 3 porciones más.", Price = 800 }
+            new UpgradeDef { Id = Upgrade.GarCazuelas, World = Stall.Garnachas, Effect = Upgrade.Plancha3, Name = "Cazuelas hondas", Description = "Cada cazuela lleva 3 porciones más.", Price = 800 },
+            // Mundo 3: Elotes (no hay comal: la olla express hace que los cazos se rellenen mas rapido)
+            new UpgradeDef { Id = Upgrade.EloBocina, World = Stall.Elotes, Effect = Upgrade.Paciencia, Name = "Bocina con cumbia", Description = "Con su musiquita los clientes esperan 15 % más.", Price = 550 },
+            new UpgradeDef { Id = Upgrade.EloOlla, World = Stall.Elotes, Effect = Upgrade.ComalRapido, Name = "Olla express", Description = "Las ollas se rellenan más rápido.", Price = 600 },
+            new UpgradeDef { Id = Upgrade.EloCarrito, World = Stall.Elotes, Effect = Upgrade.TercerPlato, Name = "Carrito grande", Description = "Una charolita más para preparar 3 a la vez.", Price = 750 },
+            new UpgradeDef { Id = Upgrade.EloOllota, World = Stall.Elotes, Effect = Upgrade.Plancha3, Name = "Ollota", Description = "Cada olla lleva 3 porciones más.", Price = 950 },
         };
 
         public static UpgradeDef Get(Upgrade u) => All[(int)u];
@@ -41,7 +47,10 @@ namespace Tacos.Logic
             switch (Get(u).Effect)
             {
                 case Upgrade.Paciencia: r.PatienceMultiplier *= 1.15f; break;
-                case Upgrade.ComalRapido: r.TortillaHotTime *= 0.6f; break;
+                case Upgrade.ComalRapido:
+                    if (Get(u).World == Stall.Elotes) r.CookTime *= 0.6f; // olla express: no hay comal, se rellena mas rapido
+                    else r.TortillaHotTime *= 0.6f;
+                    break;
                 case Upgrade.TercerPlato: r.PlateCount = Math.Max(r.PlateCount, 3); break;
                 case Upgrade.Plancha3: r.PotPortions += 3; break; // nombre viejo: se guarda por numero
             }

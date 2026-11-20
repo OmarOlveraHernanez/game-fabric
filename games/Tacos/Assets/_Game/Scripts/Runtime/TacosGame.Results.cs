@@ -119,7 +119,7 @@ namespace Tacos
             {
                 float t0 = 0.5f + i * 0.35f;
                 bool on = i < _endStarCount && _endT >= t0;
-                if (on && !_endStars[i].enabled) Audio.PlaySfx(_snd.Cobro, 0.7f);
+                if (on && !_endStars[i].enabled) Audio.PlaySfx(_snd.Estrella, 0.8f);
                 _endStars[i].enabled = on && _endStars[i].sprite != null;
                 if (!on) continue;
                 float k = Mathf.Clamp01((_endT - t0) / 0.3f);
