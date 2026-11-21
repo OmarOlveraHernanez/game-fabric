@@ -41,6 +41,13 @@ namespace Tacos
                 case Logic.Meat.Elote: return Get("ing_elote");
                 case Logic.Meat.Esquite: return Get("ing_esquite");
                 case Logic.Meat.EloteAsado: return Get("ing_asado");
+                case Logic.Meat.PozoleRojo: return Get("ing_pozole_rojo");
+                case Logic.Meat.PozoleBlanco: return Get("ing_pozole_blanco");
+                case Logic.Meat.PozoleVerde: return Get("ing_pozole_verde");
+                case Logic.Meat.TamalVerde: return Get("ing_tamal_verde");
+                case Logic.Meat.TamalRojo: return Get("ing_tamal_rojo");
+                case Logic.Meat.TamalRajas: return Get("ing_tamal_rajas");
+                case Logic.Meat.TamalDulce: return Get("ing_tamal_dulce");
                 default: return null;
             }
         }
@@ -61,6 +68,11 @@ namespace Tacos
                 case Logic.Extra.Mayonesa: return Get("ing_mayonesa");
                 case Logic.Extra.ChilePolvo: return Get("ing_chilepolvo");
                 case Logic.Extra.Picante: return Get("ing_picante");
+                case Logic.Extra.Rabano: return Get("ing_rabano");
+                case Logic.Extra.Oregano: return Get("ing_oregano");
+                case Logic.Extra.Champurrado: return Get("ing_champurrado");
+                case Logic.Extra.AtoleArroz: return Get("ing_atole_arroz");
+                case Logic.Extra.AtoleFresa: return Get("ing_atole_fresa");
                 default: return null;
             }
         }
@@ -70,6 +82,10 @@ namespace Tacos
         {
             string n = b == Logic.Base.Sope ? "sope" : b == Logic.Base.Gordita ? "gordita" : b == Logic.Base.Quesadilla ? "quesadilla" : null;
             if (b == Logic.Base.Palito || b == Logic.Base.Vaso) return null; // en los elotes la base ya viene en el dibujo
+            if (b == Logic.Base.PlatoChico) return Get("base_plato_chico");
+            if (b == Logic.Base.PlatoGrande) return Get("base_plato_grande");
+            if (b == Logic.Base.Hoja) return Get("base_hoja");
+            if (b == Logic.Base.Guajolota) return Get("base_bolillo");
             if (n == null) return Get("ing_tortilla");
             return Get("base_" + n + (golden ? "_lista" : ""));
         }
@@ -79,10 +95,22 @@ namespace Tacos
 
         /// <summary>Lo que se ve en la boca de cada olla del carrito de elotes.</summary>
         public static Sprite Pot(Meat m) =>
-            m == Logic.Meat.Elote ? Get("olla_elotes") : m == Logic.Meat.Esquite ? Get("olla_esquite") : m == Logic.Meat.EloteAsado ? Get("olla_tuetano") : Meat(m);
+            m == Logic.Meat.Elote ? Get("olla_elotes") : m == Logic.Meat.Esquite ? Get("olla_esquite") : m == Logic.Meat.EloteAsado ? Get("olla_tuetano")
+            : m >= Logic.Meat.TamalVerde ? Get("olla_tamales") : Meat(m);
+
+        static readonly string[][] PowerUpArt =
+        {
+            new[] { "pw_cebollitas", "pw_nopal", "pw_salsa", "pw_trompo" },
+            new[] { "pw_papas", "pw_nopalitos", "pw_molcajete", "pw_comal" },
+            new[] { "pw_elote_oro", "pw_raspado", "pw_chilito", "pw_olla" },
+            new[] { "pw_tostadas", "pw_jamaica", "pw_piquin", "pw_olla_pozole" },
+            new[] { "pw_tamal", "pw_cafe", "pw_rosca", "pw_vaporera" },
+            new[] { "pw_algodon", "pw_rueda", "pw_loteria", "pw_cohetes" }
+        };
 
         public static Sprite PowerUp(PowerUp p)
         {
+            if ((int)Stall >= 3) return Get(PowerUpArt[(int)Stall][(int)p]) ?? Get(PowerUpArt[0][(int)p]);
             if (Stall == Logic.Stall.Elotes)
                 switch (p)
                 {
@@ -121,7 +149,7 @@ namespace Tacos
         public static Sprite Boss(Stall s, float patienceRatio)
         {
             string mood = patienceRatio > 0.6f ? "contento" : patienceRatio > 0.3f ? "espera" : "enojado";
-            string who = s == Logic.Stall.Garnachas ? "garnachas" : s == Logic.Stall.Elotes ? "elotes" : "taqueria";
+            string who = s.ToString().ToLower(); // taqueria, garnachas, elotes, pozole, tamales, feria
             return Get($"jefe_{who}_{mood}");
         }
 

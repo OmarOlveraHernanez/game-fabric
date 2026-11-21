@@ -44,12 +44,38 @@ namespace Tacos.Logic
                     case PowerUp.Salsa: return "Chilito de la suerte";
                     case PowerUp.Trompo: return "Olla hirviendo";
                 }
+            if (s == Stall.Pozole)
+                switch (p)
+                {
+                    case PowerUp.Cebollitas: return "Tostadas crujientes";
+                    case PowerUp.Nopal: return "Agua de jamaica";
+                    case PowerUp.Salsa: return "Piquín de la suerte";
+                    case PowerUp.Trompo: return "Olla al hervor";
+                }
+            if (s == Stall.Tamales)
+                switch (p)
+                {
+                    case PowerUp.Cebollitas: return "Tamal de regalo";
+                    case PowerUp.Nopal: return "Café de olla";
+                    case PowerUp.Salsa: return "Rosca de la suerte";
+                    case PowerUp.Trompo: return "Vaporera a todo vapor";
+                }
+            if (s == Stall.Feria)
+                switch (p)
+                {
+                    case PowerUp.Cebollitas: return "Algodón de azúcar";
+                    case PowerUp.Nopal: return "Rueda de la fortuna";
+                    case PowerUp.Salsa: return "Lotería";
+                    case PowerUp.Trompo: return "Castillo de cohetes";
+                }
             return Name(p);
         }
 
         public static string Effect(PowerUp p, Stall s) =>
-            s == Stall.Garnachas && p == PowerUp.Trompo ? "cazuelas llenas y masas listas al instante"
-            : s == Stall.Elotes && p == PowerUp.Trompo ? "todas las ollas llenas al instante" : Effect(p);
+            p != PowerUp.Trompo || s == Stall.Taqueria ? Effect(p)
+            : s == Stall.Garnachas ? "cazuelas llenas y masas listas al instante"
+            : s == Stall.Tamales ? "la vaporera llena al instante"
+            : "todas las ollas llenas al instante";
 
         public static string Name(PowerUp p)
         {

@@ -83,6 +83,8 @@ namespace Tacos
                 _data.version = 3;
                 _saveFile.Save(_data);
             }
+            if (_data.version < 4) { _data.FitTutorials(AllMissions); _saveFile.Save(_data); }
+            _data.FitTutorials(AllMissions);
             _taq = Array.Find(TaqueroDef.Starters, t => t.Id == _data.taquero) ?? TaqueroDef.Guero; // se guarda el lugar como taquero
             _mission = FirstOpenMission();
 
@@ -144,6 +146,7 @@ namespace Tacos
         {
             _game = UiKit.Stretch(UiKit.NewRect("Juego", _root));
             _scene = new KitchenScene(_game, Do);
+            _scene.Notice += text => { Toast(text, UiKit.Maiz); Audio.PlaySfx(_snd.Error, 0.4f); };
             BuildHud();
 
             var toast = UiKit.Panel(_game, "Aviso", new Color(UiKit.Ink.r, UiKit.Ink.g, UiKit.Ink.b, 0.92f), true, false);
@@ -195,9 +198,28 @@ namespace Tacos
             "¡Qué rico elotito!", "¡Bien preparado, como me gusta!", "¡Con harta mayonesa, eso!", "¡Uy, del que pica!", "¡Sabe a domingo en la plaza!",
             "¡Calientito, qué rico!", "¡Así se preparan!", "¡Gracias, joven!", "¡El mejor esquite de la plaza!", "¡Mmm, con su limoncito!"
         };
-        static string[] Reactions(Stall s) => s == Stall.Garnachas ? SaidGarnachas : s == Stall.Elotes ? SaidElotes : SaidTacos;
+        static readonly string[] SaidPozole =
+        {
+            "¡Qué rico pozolito!", "¡Bien calientito, como debe ser!", "¡Con su limoncito, qué rico!", "¡Así lo hacía mi abuela!", "¡Esto revive a cualquiera!",
+            "¡Uy, qué buen caldo!", "¡Bien servido, eh!", "¡Con todo y rábano, eso!", "¡El mejor pozole del barrio!", "¡Gracias, señito!"
+        };
+        static readonly string[] SaidTamales =
+        {
+            "¡Qué rico tamalito!", "¡Bien esponjadito!", "¡Con su atolito, qué rico!", "¡Así me gusta empezar el día!", "¡Uy, calientito!",
+            "¡La guajolota del día!", "¡Sabe a Candelaria!", "¡Gracias, marchante!", "¡Están de rechupete!", "¡Mmm, qué buen champurrado!"
+        };
+        static readonly string[] SaidFeria =
+        {
+            "¡Qué rico todo!", "¡Esto sí es feria!", "¡Uy, de lo mejor de la feria!", "¡Ya me hacía falta un antojito!", "¡Bien preparado!",
+            "¡A la próxima traigo a la familia!", "¡Qué sabor, joven!", "¡Mejor que los juegos mecánicos!", "¡Gracias, me voy a la rueda!", "¡De lujo!"
+        };
+        static readonly string[][] SaidBy = { SaidTacos, SaidGarnachas, SaidElotes, SaidPozole, SaidTamales, SaidFeria };
+        static string[] Reactions(Stall s) => SaidBy[(int)s];
 
-        static string BaseName(Base b) => b == Base.Gordita ? "una gordita" : b == Base.Quesadilla ? "una quesadilla" : b == Base.Sope ? "un sope" : "una tortilla";
+        static string BaseName(Base b) =>
+            b == Base.Gordita ? "una gordita" : b == Base.Quesadilla ? "una quesadilla" : b == Base.Sope ? "un sope"
+            : b == Base.PlatoChico ? "un plato chico" : b == Base.PlatoGrande ? "un plato grande"
+            : b == Base.Hoja ? "una hoja" : b == Base.Guajolota ? "un bolillo" : "una tortilla";
 
         static string RuleText(MissionRule r) =>
             r == MissionRule.NoErrors ? "cero errores" : r == MissionRule.NoBurn ? "sin quemar nada" : null;
@@ -215,6 +237,7 @@ namespace Tacos
                 // Otro puesto: se arma su cocina (solo existe una a la vez)
                 UnityEngine.Object.Destroy(_scene.Root.gameObject);
                 _scene = new KitchenScene(_game, Do, StallLayout.For(_sim.Level.Stall));
+                _scene.Notice += text => { Toast(text, UiKit.Maiz); Audio.PlaySfx(_snd.Error, 0.4f); };
                 _scene.Root.SetSiblingIndex(0);
                 _tutorial.Scene = _scene;
             }
@@ -255,17 +278,17 @@ namespace Tacos
             _sim.PowerUpGained += OnPowerUpGained;
             _sim.PowerUpUsed += OnPowerUpUsed;
             _sim.Finished += EndTurn;
-            var big = _sim.Level.Stall == Stall.Garnachas ? Upgrade.GarCazuelas : _sim.Level.Stall == Stall.Elotes ? Upgrade.EloOllota : Upgrade.Plancha3;
+            var big = UpgradeDef.For(_sim.Level.Stall)[3].Id; // la de "porciones de mas" de ese mundo
             _scene.Setup(_sim, P.Owns(Upgrade.Paciencia), P.Owns(Upgrade.ComalRapido), P.Owns(big));
             SetupHud();
             ShowScreen(_game);
             _toastTime = 0f;
             _toastPanel.SetActive(false);
             _paused = false;
-            int bit = 1 << G(_mission), m = G(_mission);
-            _tutorial.Begin(_sim, _mission, (_data.introsSeen & bit) == 0, (_data.guidedSeen & bit) == 0,
-                () => { _paused = false; _data.introsSeen |= 1 << m; _saveFile.Save(_data); },
-                () => { _data.guidedSeen |= 1 << m; _saveFile.Save(_data); });
+            int m = G(_mission);
+            _tutorial.Begin(_sim, _mission, !_data.intros[m], !_data.guided[m],
+                () => { _paused = false; _data.intros[m] = true; _saveFile.Save(_data); },
+                () => { _data.guided[m] = true; _saveFile.Save(_data); });
             if (_tutorial.ShowingIntro) _paused = true;
             Audio.PlayMusic(_snd.MusicGame);
             Refresh();
@@ -326,6 +349,16 @@ namespace Tacos
             _toastTime = 1.4f;
         }
 
+        static string TamalName(Meat m) =>
+            m == Meat.TamalVerde ? "verde" : m == Meat.TamalRojo ? "rojo" : m == Meat.TamalRajas ? "de rajas" : "dulce";
+
+        static string NeedBaseText =>
+            TacosArt.Stall == Stall.Pozole ? "Primero arrastra un plato de la pila a la tabla"
+            : TacosArt.Stall == Stall.Tamales ? "Primero arrastra una hoja o un bolillo a la tabla"
+            : "Primero pasa una tortilla caliente del domo al plato";
+
+        static string OneOfText => TacosArt.Stall == Stall.Tamales ? "Un solo atole por combo" : "Una sola salsa por taco";
+
         static string Message(CommandResult r)
         {
             switch (r)
@@ -337,11 +370,12 @@ namespace Tacos
                 case CommandResult.PotEmpty: return "Se acabó: toca el cazo para rellenarlo";
                 case CommandResult.PotRefilling: return "Se está cociendo, espera tantito";
                 case CommandResult.PotFull: return "Los cazos ya están llenos";
-                case CommandResult.NeedTortillaFirst: return "Primero pasa una tortilla caliente del domo al plato";
+                case CommandResult.NeedTortillaFirst: return NeedBaseText;
                 case CommandResult.PlatesFull: return "Los platos ya tienen carne: entrega o tira uno";
                 case CommandResult.NeedMeatFirst: return "Primero pon la carne en el plato";
-                case CommandResult.OneSalsaOnly: return "Una sola salsa por taco";
+                case CommandResult.OneSalsaOnly: return OneOfText;
                 case CommandResult.FirstMayo: return "¡Primero la mayonesa! Si no, no se pega";
+                case CommandResult.NotForThis: return "Eso no va con ese antojo";
                 case CommandResult.NoPlateReady: return "Ningún plato está listo para este cliente";
                 case CommandResult.NoPowerUp: return "Todavía no tienes ese power-up: llena tu racha";
                 case CommandResult.PowerUpActive: return "Ya está funcionando";
@@ -410,6 +444,11 @@ namespace Tacos
                 case Extra.Mayonesa: return "Mayonesa";
                 case Extra.ChilePolvo: return "Chile en polvo";
                 case Extra.Picante: return "Salsa picante";
+                case Extra.Rabano: return "Rábano";
+                case Extra.Oregano: return "Orégano";
+                case Extra.Champurrado: return "Champurrado";
+                case Extra.AtoleArroz: return "Atole de arroz";
+                case Extra.AtoleFresa: return "Atole de fresa";
                 default: return e.ToString();
             }
         }
@@ -419,7 +458,15 @@ namespace Tacos
             switch (h.Kind)
             {
                 case HintKind.WaitCustomer: return "Espera tantito, ya viene el siguiente cliente…";
-                case HintKind.ServeMeat: return h.Meat == Meat.Pastor ? "Mira su globito: quiere pastor. Arrastra la carne del trompo al plato."
+                case HintKind.ServeMeat:
+                    if (_sim != null && h.Meat >= Meat.PozoleRojo && h.Meat <= Meat.PozoleVerde)
+                    {
+                        foreach (var pl in _sim.Plates)
+                            if (pl.Meat == h.Meat && pl.NeedsScoop) return "¡Es plato grande! Ponle OTRO cucharón de la misma olla.";
+                        return $"Quiere {KitchenScene.MeatName(h.Meat).ToLower()}: arrastra un cucharón de su olla al plato.";
+                    }
+                    if (h.Meat >= Meat.TamalVerde) return $"Quiere tamal {TamalName(h.Meat)}: arrástralo de la vaporera al plato.";
+                    return h.Meat == Meat.Pastor ? "Mira su globito: quiere pastor. Arrastra la carne del trompo al plato."
                     : h.Meat == Meat.Elote ? "Quiere elote: arrástralo de la olla grande a la charolita."
                     : h.Meat == Meat.Esquite || h.Meat == Meat.EloteAsado ? $"Quiere {KitchenScene.MeatName(h.Meat).ToLower()}: arrástralo de su olla a la charolita."
                     : h.Meat >= Meat.Chicharron ? $"Quiere {KitchenScene.MeatName(h.Meat).ToLower()}: arrastra el guisado de su cazuela a la masa."
@@ -427,6 +474,8 @@ namespace Tacos
                 case HintKind.RefillMeat: return h.Meat == Meat.Pastor ? "Se acabó el pastor: toca el trompo para rebanar más." : "Ese cazo está vacío: tócalo para rellenarlo.";
                 case HintKind.WaitMeat: return "La carne se está cociendo… espera tantito.";
                 case HintKind.AddTortilla:
+                    if (_sim != null && _sim.Level.StallDef.InstantBase)
+                        return $"Mira su globito: arrastra {BaseName(h.Command.HasValue ? (Base)h.Command.Value.Arg : Base.PlatoChico)} de su pila a la tabla.";
                     if (_sim != null && _sim.Level.Stall == Stall.Garnachas)
                         return $"Mira qué masa pidió: arrastra {BaseName(h.Command.HasValue ? (Base)h.Command.Value.Arg : Base.Sope)} de su pila al comal.";
                     return "Primero la tortilla: arrastra una de la pila al domo para calentarla.";
@@ -436,6 +485,7 @@ namespace Tacos
                 case HintKind.SelectPlate: return "Toca este plato para trabajar en él.";
                 case HintKind.AddExtra:
                     if (h.Extra == Extra.Mayonesa) return "¡Primero la mayonesa! Arrástrala al elote; si no, el queso y el chile no se pegan.";
+                    if (h.Extra >= Extra.Champurrado) return $"Y su atole: arrastra el {ExtraName(h.Extra).ToLower()} al plato.";
                     return $"Ahora lo que pide encima: arrastra {ExtraName(h.Extra).ToLower()} al plato.";
                 case HintKind.TrashPlate: return "Ese plato no le sirve a nadie: arrástralo al bote.";
                 case HintKind.Deliver: return _sim != null && _sim.Level.Stall != Stall.Taqueria ? "¡Ya quedó! Arrastra el plato al cliente." : "¡Ya quedó! Arrastra el plato al cliente para entregarle su taco.";

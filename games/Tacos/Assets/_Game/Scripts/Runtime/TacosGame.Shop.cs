@@ -105,6 +105,18 @@ namespace Tacos
                 case Upgrade.EloOlla: return "mej_olla_express";
                 case Upgrade.EloCarrito: return "mej_carrito";
                 case Upgrade.EloOllota: return "mej_ollota";
+                case Upgrade.PozRocola: return "mej_rocola";
+                case Upgrade.PozFogon: return "mej_fogon";
+                case Upgrade.PozMesa: return "mej_mesa";
+                case Upgrade.PozOlla: return "mej_olla_pozolera";
+                case Upgrade.TamAtole: return "mej_atolito";
+                case Upgrade.TamVaporera: return "mej_vaporera";
+                case Upgrade.TamCanasta: return "mej_canasta";
+                case Upgrade.TamGigante: return "mej_tamalera";
+                case Upgrade.FerBanda: return "mej_banda";
+                case Upgrade.FerFogones: return "mej_fogones";
+                case Upgrade.FerPuesto: return "mej_puesto";
+                case Upgrade.FerOllas: return "mej_ollas_feria";
                 default: return "mej_cazuela";
             }
         }
@@ -165,6 +177,18 @@ namespace Tacos
                 case Upgrade.EloOlla: return "Tus ollas ahora se rellenan rapidito.";
                 case Upgrade.EloCarrito: return "Ya tienes otra charolita.";
                 case Upgrade.EloOllota: return "Tus ollas ahora van bien llenas.";
+                case Upgrade.PozRocola: return "Ya suenan los boleros en la pozolería.";
+                case Upgrade.PozFogon: return "Tus ollas ahora hierven rapidito.";
+                case Upgrade.PozMesa: return "Ya tienes otro plato en la mesa.";
+                case Upgrade.PozOlla: return "Tus ollas ahora van bien llenas.";
+                case Upgrade.TamAtole: return "Tus clientes ya tienen su atolito.";
+                case Upgrade.TamVaporera: return "Tu vaporera ahora cuece rapidito.";
+                case Upgrade.TamCanasta: return "Ya tienes otro plato en la mesa.";
+                case Upgrade.TamGigante: return "Tu vaporera ahora rinde más.";
+                case Upgrade.FerBanda: return "Ya toca la banda en la feria.";
+                case Upgrade.FerFogones: return "Tus ollas ahora se rellenan rapidito.";
+                case Upgrade.FerPuesto: return "Ya tienes otro plato en el puesto.";
+                case Upgrade.FerOllas: return "Tus ollas ahora van bien llenas.";
                 default: return "Tus cazuelas ahora van bien llenas.";
             }
         }
@@ -180,8 +204,11 @@ namespace Tacos
             // Cada mundo tiene su tienda: los letreros muestran las mejoras de este puesto
             var world = Missions[0].Stall;
             var defs = UpgradeDef.For(world);
-            _shopTitle.text = world == Stall.Garnachas ? "Mercado · Mejoras de garnachas"
-                            : world == Stall.Elotes ? "Plaza · Mejoras del carrito" : "Jarcería · Mejoras de cocina";
+            _shopTitle.text = new[]
+            {
+                "Jarcería · Mejoras de cocina", "Mercado · Mejoras de garnachas", "Plaza · Mejoras del carrito",
+                "Mercado · Mejoras de la pozolería", "Tianguis · Mejoras de la tamalería", "La Feria · Mejoras del puesto"
+            }[(int)world];
             for (int i = 0; i < _shopCards.Count && i < defs.Length; i++)
             {
                 var c = _shopCards[i];

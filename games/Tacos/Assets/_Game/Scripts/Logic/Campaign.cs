@@ -7,7 +7,10 @@ namespace Tacos.Logic
     {
         Paciencia = 0, ComalRapido = 1, TercerPlato = 2, Plancha3 = 3,             // Taqueria
         GarAguas = 4, GarComal = 5, GarTabla = 6, GarCazuelas = 7,                   // Garnachas
-        EloBocina = 8, EloOlla = 9, EloCarrito = 10, EloOllota = 11                  // Elotes
+        EloBocina = 8, EloOlla = 9, EloCarrito = 10, EloOllota = 11,                 // Elotes
+        PozRocola = 12, PozFogon = 13, PozMesa = 14, PozOlla = 15,                   // Pozoleria
+        TamAtole = 16, TamVaporera = 17, TamCanasta = 18, TamGigante = 19,           // Tamales
+        FerBanda = 20, FerFogones = 21, FerPuesto = 22, FerOllas = 23                // La Feria
     }
 
     public sealed class UpgradeDef
@@ -34,6 +37,21 @@ namespace Tacos.Logic
             new UpgradeDef { Id = Upgrade.EloOlla, World = Stall.Elotes, Effect = Upgrade.ComalRapido, Name = "Olla express", Description = "Las ollas se rellenan más rápido.", Price = 600 },
             new UpgradeDef { Id = Upgrade.EloCarrito, World = Stall.Elotes, Effect = Upgrade.TercerPlato, Name = "Carrito grande", Description = "Una charolita más para preparar 3 a la vez.", Price = 750 },
             new UpgradeDef { Id = Upgrade.EloOllota, World = Stall.Elotes, Effect = Upgrade.Plancha3, Name = "Ollota", Description = "Cada olla lleva 3 porciones más.", Price = 950 },
+            // Mundo 4: Pozoleria
+            new UpgradeDef { Id = Upgrade.PozRocola, World = Stall.Pozole, Effect = Upgrade.Paciencia, Name = "Rocola", Description = "Con boleros los clientes esperan 15 % más.", Price = 700 },
+            new UpgradeDef { Id = Upgrade.PozFogon, World = Stall.Pozole, Effect = Upgrade.ComalRapido, Name = "Fogón de leña", Description = "Las ollas se rellenan más rápido.", Price = 750 },
+            new UpgradeDef { Id = Upgrade.PozMesa, World = Stall.Pozole, Effect = Upgrade.TercerPlato, Name = "Mesa larga", Description = "Un plato más para servir 3 a la vez.", Price = 900 },
+            new UpgradeDef { Id = Upgrade.PozOlla, World = Stall.Pozole, Effect = Upgrade.Plancha3, Name = "Olla pozolera", Description = "Cada olla lleva 3 porciones más.", Price = 1100 },
+            // Mundo 5: Tamales
+            new UpgradeDef { Id = Upgrade.TamAtole, World = Stall.Tamales, Effect = Upgrade.Paciencia, Name = "Atolito de cortesía", Description = "Con su atolito los clientes esperan 15 % más.", Price = 850 },
+            new UpgradeDef { Id = Upgrade.TamVaporera, World = Stall.Tamales, Effect = Upgrade.ComalRapido, Name = "Vaporera nueva", Description = "Los tamales se cuecen más rápido.", Price = 900 },
+            new UpgradeDef { Id = Upgrade.TamCanasta, World = Stall.Tamales, Effect = Upgrade.TercerPlato, Name = "Canasta grande", Description = "Un plato más para servir 3 a la vez.", Price = 1050 },
+            new UpgradeDef { Id = Upgrade.TamGigante, World = Stall.Tamales, Effect = Upgrade.Plancha3, Name = "Tamalera gigante", Description = "Cada olla lleva 3 tamales más.", Price = 1250 },
+            // Mundo 6: La Feria
+            new UpgradeDef { Id = Upgrade.FerBanda, World = Stall.Feria, Effect = Upgrade.Paciencia, Name = "Banda en vivo", Description = "Con la banda los clientes esperan 15 % más.", Price = 1000 },
+            new UpgradeDef { Id = Upgrade.FerFogones, World = Stall.Feria, Effect = Upgrade.ComalRapido, Name = "Fogones de feria", Description = "Las ollas se rellenan más rápido.", Price = 1100 },
+            new UpgradeDef { Id = Upgrade.FerPuesto, World = Stall.Feria, Effect = Upgrade.TercerPlato, Name = "Puesto doble", Description = "Un plato más para servir 3 a la vez.", Price = 1250 },
+            new UpgradeDef { Id = Upgrade.FerOllas, World = Stall.Feria, Effect = Upgrade.Plancha3, Name = "Ollas de feria", Description = "Cada olla lleva 3 porciones más.", Price = 1500 },
         };
 
         public static UpgradeDef Get(Upgrade u) => All[(int)u];
@@ -48,7 +66,7 @@ namespace Tacos.Logic
             {
                 case Upgrade.Paciencia: r.PatienceMultiplier *= 1.15f; break;
                 case Upgrade.ComalRapido:
-                    if (Get(u).World == Stall.Elotes) r.CookTime *= 0.6f; // olla express: no hay comal, se rellena mas rapido
+                    if (!StallDef.Get(Get(u).World).HasComal) r.CookTime *= 0.6f; // sin comal: las ollas se rellenan mas rapido
                     else r.TortillaHotTime *= 0.6f;
                     break;
                 case Upgrade.TercerPlato: r.PlateCount = Math.Max(r.PlateCount, 3); break;

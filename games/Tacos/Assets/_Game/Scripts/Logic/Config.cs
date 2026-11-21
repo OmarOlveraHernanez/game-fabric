@@ -392,8 +392,305 @@ namespace Tacos.Logic
             },
         };
 
+        // ================= Mundo 4: Pozoleria =================
+        // Lo nuevo del mundo: EL TAMAÑO. El plato se toma de su pila y va directo a la tabla (no hay comal);
+        // el plato grande lleva 2 cucharones. Seis cositas para encima: lechuga, rabano, cebolla, oregano, piquin y limon.
+        static readonly Meat[] SoloRojo = { Meat.PozoleRojo };
+        static readonly Meat[] RojoBlanco = { Meat.PozoleRojo, Meat.PozoleBlanco };
+        public static readonly Meat[] TresPozoles = { Meat.PozoleRojo, Meat.PozoleBlanco, Meat.PozoleVerde };
+        static readonly Base[] SoloChico = { Base.PlatoChico };
+        static readonly Base[] SoloGrande = { Base.PlatoGrande };
+
+        public static readonly LevelConfig[] Pozole =
+        {
+            new LevelConfig
+            {
+                Stall = Stall.Pozole, Name = "Primer pozole", Description = "Plato chico, un cliente a la vez y pistas paso a paso.",
+                MaxCustomers = 1, Patience = 60f, MaxExtras = 2, NeedsTortilla = true, Hints = true, Meats = SoloRojo, Bases = SoloChico,
+                Intro = "¡Bienvenido a la pozolería! Arrastra un plato de la pila a la tabla, luego un cucharón de pozole y al final lo que lleva encima.",
+                Stars = new[] { 125, 265, 400 }, GapMin = 1.5f, GapMax = 2.5f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Pozole, Name = "Bien servido", Description = "Hasta 2 clientes y más cositas encima.",
+                MaxCustomers = 2, Patience = 48f, MinExtras = 2, MaxExtras = 3, NeedsTortilla = true, Meats = SoloRojo, Bases = SoloChico, PowerUps = P1,
+                Intro = "Ahora lo piden con lechuga, rábano, orégano y su limón. Fíjate bien en el globito.",
+                Stars = new[] { 110, 245, 420 }, GapMin = 2f, GapMax = 3.5f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Pozole, Name = "Plato grande", Description = "Nuevo: plato grande, ¡lleva 2 cucharones!",
+                MaxCustomers = 2, Patience = 50f, MaxExtras = 2, NeedsTortilla = true, Hints = true, Meats = SoloRojo, PowerUps = P1,
+                Intro = "Llegó el plato grande: lleva DOS cucharones de pozole. Si le pones uno solo, el cliente no lo acepta.",
+                Stars = new[] { 100, 220, 370 }, GapMin = 2f, GapMax = 3.5f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Pozole, Name = "Pozole blanco", Description = "Nueva olla: pozole blanco. Hasta 3 clientes.",
+                MaxCustomers = 3, Patience = 48f, MaxExtras = 3, NeedsTortilla = true, Meats = RojoBlanco, PowerUps = P2,
+                Intro = "Nueva olla: pozole blanco. Y ya pueden llegar 3 clientes a la vez.",
+                Stars = new[] { 95, 215, 370 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Pozole, Name = "Pozole verde", Description = "Nueva olla: pozole verde. Ya tienes los 3.",
+                MaxCustomers = 3, Patience = 46f, MaxExtras = 3, NeedsTortilla = true, Meats = TresPozoles, PowerUps = P2,
+                Intro = "Llegó el pozole verde: ya tienes rojo, blanco y verde. ¡Ojo con cuál pide cada quien!",
+                Stars = new[] { 100, 220, 370 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Pozole, Name = "Domingo familiar", Description = "Llegan los clientes especiales.",
+                MaxCustomers = 3, Patience = 46f, MaxExtras = 3, NeedsTortilla = true, Meats = TresPozoles, PowerUps = P2, Specials = S1, SpecialChance = 0.15f,
+                Intro = "Domingo familiar: hay mucha gente y puede llegar el Crítico.",
+                Stars = new[] { 130, 290, 480 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Pozole, Name = "Salida de misa", Description = "Clientes con prisa: menos paciencia, propina doble.",
+                MaxCustomers = 3, Patience = 44f, MaxExtras = 3, NeedsTortilla = true, Meats = TresPozoles, RushChance = 0.3f, PowerUps = P3, Specials = S1, SpecialChance = 0.15f,
+                Intro = "¡Salida de misa! Los que traen prisa esperan menos pero dejan doble propina.",
+                Stars = new[] { 130, 285, 500 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Pozole, Name = "Con todo", Description = "Pedidos largos: de 3 a 5 cosas encima.",
+                MaxCustomers = 3, Patience = 48f, MinExtras = 3, MaxExtras = 5, NeedsTortilla = true, Meats = TresPozoles, PowerUps = P3, Specials = S2, SpecialChance = 0.15f,
+                Intro = "Hoy lo quieren con todo: lechuga, rábano, cebolla, orégano, piquín y limón. Revisa bien el globito.",
+                Stars = new[] { 105, 235, 410 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Pozole, Name = "Cero errores", Description = "Regla: un pedido equivocado y no hay estrellas.",
+                MaxCustomers = 3, Patience = 46f, MaxExtras = 4, NeedsTortilla = true, Meats = TresPozoles, Rule = MissionRule.NoErrors, PowerUps = P4, Specials = S2, SpecialChance = 0.2f,
+                Intro = "Cero errores: si entregas algo mal o se te va un cliente, la misión no da estrellas.",
+                Stars = new[] { 115, 255, 450 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Pozole, Name = "Noche del Grito", Description = "15 de septiembre: puros platos grandes.",
+                MaxCustomers = 3, Patience = 46f, MaxExtras = 3, NeedsTortilla = true, Meats = TresPozoles, Bases = SoloGrande, RushChance = 0.2f, PowerUps = P4, Specials = S3, SpecialChance = 0.2f,
+                Intro = "¡Noche del Grito! Todos quieren plato grande: dos cucharones cada uno. Cuida que no se vacíen las ollas.",
+                Stars = new[] { 100, 220, 380 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Pozole, Name = "Fiesta del barrio", Description = "Mucha gente con prisa y clientes especiales.",
+                MaxCustomers = 3, Patience = 42f, MinExtras = 2, MaxExtras = 4, NeedsTortilla = true, Meats = TresPozoles, RushChance = 0.3f, PowerUps = P4, Specials = S3, SpecialChance = 0.25f,
+                Intro = "¡Fiesta del barrio! Llega gente de todos lados. Fíjate en el tamaño de cada plato.",
+                Stars = new[] { 100, 230, 415 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Pozole, Name = "Don Ramiro", Description = "Turno de 2 minutos con todo y el jefe final.",
+                Duration = 120f, MaxCustomers = 3, Patience = 42f, MinExtras = 2, MaxExtras = 4, NeedsTortilla = true, RushChance = 0.3f, Meats = TresPozoles,
+                PowerUps = P4, Specials = S3, SpecialChance = 0.25f,
+                BossAt = 40f, BossName = "Don Ramiro, el del mercado",
+                Intro = "Hoy viene Don Ramiro, el del mercado: pide 3 pozoles, uno tras otro, y no perdona un plato grande con un solo cucharón. Si se va enojado, no hay estrellas.",
+                Stars = new[] { 240, 500, 725 }, GapMin = 2.5f, GapMax = 4.5f, LateAfter = 80f
+            }
+        };
+
+        // ================= Mundo 5: Tamales =================
+        // Lo nuevo del mundo: EL COMBO (tamal con su atole) y la vaporera, que rinde 8 pero tarda en cocer.
+        // El tamal va en su hoja o en guajolota (bolillo), directo de la pila al plato. El dulce no lleva crema ni queso.
+        static readonly Meat[] SoloVerde = { Meat.TamalVerde };
+        static readonly Meat[] VerdeRojo = { Meat.TamalVerde, Meat.TamalRojo };
+        static readonly Meat[] TresTamales = { Meat.TamalVerde, Meat.TamalRojo, Meat.TamalRajas };
+        public static readonly Meat[] CuatroTamales = { Meat.TamalVerde, Meat.TamalRojo, Meat.TamalRajas, Meat.TamalDulce };
+        static readonly Base[] SoloHoja = { Base.Hoja };
+        static readonly Base[] SoloGuajolota = { Base.Guajolota };
+
+        public static readonly LevelConfig[] Tamales =
+        {
+            new LevelConfig
+            {
+                Stall = Stall.Tamales, Name = "Primer tamal", Description = "Tamal en su hoja, un cliente a la vez y pistas paso a paso.",
+                MaxCustomers = 1, Patience = 60f, MaxExtras = 1, NeedsTortilla = true, Hints = true, Meats = SoloVerde, Bases = SoloHoja,
+                Intro = "¡Bienvenido a los tamales! Arrastra una hoja al plato, luego un tamal de la vaporera y, si lo pide, su atole.",
+                Stars = new[] { 130, 280, 405 }, GapMin = 1.5f, GapMax = 2.5f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Tamales, Name = "Verde y rojo", Description = "Hasta 2 clientes: tamal verde y tamal rojo.",
+                MaxCustomers = 2, Patience = 48f, MaxExtras = 2, NeedsTortilla = true, Meats = VerdeRojo, Bases = SoloHoja, PowerUps = P1,
+                Intro = "Ahora hay verde y rojo. La vaporera rinde mucho, pero tarda en cocer: rellénala ANTES de que se acabe.",
+                Stars = new[] { 125, 270, 460 }, GapMin = 2f, GapMax = 3.5f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Tamales, Name = "La guajolota", Description = "Nuevo: guajolota, el tamal en bolillo.",
+                MaxCustomers = 2, Patience = 50f, MaxExtras = 2, NeedsTortilla = true, Hints = true, Meats = VerdeRojo, PowerUps = P1,
+                Intro = "Llegó la guajolota: el tamal va dentro de un bolillo. Cada cliente pide hoja o guajolota.",
+                Stars = new[] { 125, 270, 470 }, GapMin = 2f, GapMax = 3.5f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Tamales, Name = "Rajas con queso", Description = "Nuevo tamal: rajas con queso. Hasta 3 clientes.",
+                MaxCustomers = 3, Patience = 48f, MaxExtras = 2, NeedsTortilla = true, Meats = TresTamales, PowerUps = P2,
+                Intro = "Nueva olla de la vaporera: rajas con queso. Y ya pueden llegar 3 clientes.",
+                Stars = new[] { 125, 280, 430 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Tamales, Name = "Tamal dulce", Description = "Nuevo: tamal dulce. ¡No lleva crema ni queso!",
+                MaxCustomers = 3, Patience = 46f, MaxExtras = 2, NeedsTortilla = true, Meats = CuatroTamales, PowerUps = P2,
+                Intro = "Llegó el tamal dulce, el rosita: va solo o con su atole. NO le pongas crema ni queso.",
+                Stars = new[] { 125, 285, 440 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Tamales, Name = "Desayuno en la oficina", Description = "Llegan los clientes especiales.",
+                MaxCustomers = 3, Patience = 46f, MaxExtras = 2, NeedsTortilla = true, Meats = CuatroTamales, PowerUps = P2, Specials = S1, SpecialChance = 0.15f,
+                Intro = "Desayuno en la oficina: hay mucha gente y puede llegar el Crítico.",
+                Stars = new[] { 165, 365, 550 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Tamales, Name = "Antes del trabajo", Description = "Clientes con prisa: menos paciencia, propina doble.",
+                MaxCustomers = 3, Patience = 44f, MaxExtras = 2, NeedsTortilla = true, Meats = CuatroTamales, RushChance = 0.3f, PowerUps = P3, Specials = S1, SpecialChance = 0.15f,
+                Intro = "¡Todos van tarde al trabajo! Los que traen prisa esperan menos pero dejan doble propina.",
+                Stars = new[] { 160, 375, 595 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Tamales, Name = "Combo completo", Description = "Todos piden su combo: tamal, cositas y atole.",
+                MaxCustomers = 3, Patience = 48f, MinExtras = 2, MaxExtras = 3, NeedsTortilla = true, Meats = CuatroTamales, PowerUps = P3, Specials = S2, SpecialChance = 0.15f,
+                Intro = "Hoy todos quieren el combo completo: tamal con crema, queso y su atole.",
+                Stars = new[] { 125, 305, 535 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Tamales, Name = "Cero errores", Description = "Regla: un pedido equivocado y no hay estrellas.",
+                MaxCustomers = 3, Patience = 46f, MaxExtras = 3, NeedsTortilla = true, Meats = CuatroTamales, Rule = MissionRule.NoErrors, PowerUps = P4, Specials = S2, SpecialChance = 0.2f,
+                Intro = "Cero errores: si entregas algo mal o se te va un cliente, la misión no da estrellas.",
+                Stars = new[] { 140, 325, 540 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Tamales, Name = "Puras guajolotas", Description = "Todos quieren guajolota y llegan con prisa.",
+                MaxCustomers = 3, Patience = 44f, MaxExtras = 3, NeedsTortilla = true, Meats = CuatroTamales, Bases = SoloGuajolota, RushChance = 0.25f, PowerUps = P4, Specials = S3, SpecialChance = 0.2f,
+                Intro = "Mañana de guajolotas: todos la quieren en bolillo. Ten la vaporera siempre llena.",
+                Stars = new[] { 140, 320, 560 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Tamales, Name = "Día de la Candelaria", Description = "Mucha gente con prisa y clientes especiales.",
+                MaxCustomers = 3, Patience = 42f, MinExtras = 2, MaxExtras = 3, NeedsTortilla = true, Meats = CuatroTamales, RushChance = 0.3f, PowerUps = P4, Specials = S3, SpecialChance = 0.25f,
+                Intro = "¡Día de la Candelaria! A todos les salió el muñequito en la rosca y vienen por sus tamales.",
+                Stars = new[] { 135, 305, 540 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Tamales, Name = "Doña Cuca", Description = "Turno de 2 minutos con todo y la jefa final.",
+                Duration = 120f, MaxCustomers = 3, Patience = 42f, MinExtras = 2, MaxExtras = 3, NeedsTortilla = true, RushChance = 0.3f, Meats = CuatroTamales,
+                PowerUps = P4, Specials = S3, SpecialChance = 0.25f,
+                BossAt = 40f, BossName = "Doña Cuca, la abuelita tamalera",
+                Intro = "Hoy viene Doña Cuca, la abuelita tamalera: pide 3 combos, uno tras otro, y se sabe todos los trucos. Si se va enojada, no hay estrellas.",
+                Stars = new[] { 275, 585, 865 }, GapMin = 2.5f, GapMax = 4.5f, LateAfter = 80f
+            }
+        };
+
+        // ================= Mundo 6: La Feria =================
+        // TODO JUNTO: un antojo de cada puesto en el mismo changarro, cada uno con sus reglas
+        // (pina solo al pastor, la mayonesa primero en el elote, el atole con el tamal). La base sale sola.
+        static readonly Meat[] TacoElote = { Meat.Pastor, Meat.Elote };
+        static readonly Meat[] TacoElotePozole = { Meat.Pastor, Meat.Elote, Meat.PozoleBlanco };
+        public static readonly Meat[] TodaLaFeria = { Meat.Pastor, Meat.Elote, Meat.PozoleBlanco, Meat.TamalVerde };
+        static readonly Meat[] FeriaDulce = { Meat.Elote, Meat.TamalVerde };
+
+        public static readonly LevelConfig[] Feria =
+        {
+            new LevelConfig
+            {
+                Stall = Stall.Feria, Name = "Llegó la feria", Description = "Tacos y elotes en el mismo puesto, con pistas.",
+                MaxCustomers = 2, Patience = 56f, MaxExtras = 2, Hints = true, Meats = TacoElote,
+                Intro = "¡Bienvenido a la feria! Aquí se vende de todo y cada antojo lleva lo suyo: la salsa solo al taco y la mayonesa primero en el elote.",
+                Stars = new[] { 145, 315, 530 }, GapMin = 1.5f, GapMax = 2.5f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Feria, Name = "Llega el pozole", Description = "Nueva olla: pozole rojo. Hasta 3 clientes.",
+                MaxCustomers = 3, Patience = 50f, MaxExtras = 2, Meats = TacoElotePozole, PowerUps = P2,
+                Intro = "Llegó el pozole blanco: con cebolla, chile y su salsita. Ya pueden llegar 3 clientes.",
+                Stars = new[] { 145, 320, 465 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Feria, Name = "Llegan los tamales", Description = "Nueva olla: tamales. Ya tienes los 4 antojos.",
+                MaxCustomers = 3, Patience = 48f, MaxExtras = 2, Meats = TodaLaFeria, PowerUps = P2,
+                Intro = "Llegaron los tamales: con queso y su champurrado. Ya tienes los 4 antojos de la feria.",
+                Stars = new[] { 155, 335, 450 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Feria, Name = "Juegos mecánicos", Description = "Llegan los clientes especiales.",
+                MaxCustomers = 3, Patience = 46f, MaxExtras = 3, Meats = TodaLaFeria, PowerUps = P3, Specials = S1, SpecialChance = 0.15f,
+                Intro = "Ya abrieron los juegos mecánicos: hay mucha gente y puede llegar el Crítico.",
+                Stars = new[] { 180, 405, 605 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Feria, Name = "La rueda de la fortuna", Description = "Clientes con prisa: menos paciencia, propina doble.",
+                MaxCustomers = 3, Patience = 44f, MaxExtras = 3, Meats = TodaLaFeria, RushChance = 0.3f, PowerUps = P3, Specials = S1, SpecialChance = 0.15f,
+                Intro = "¡Se acaba la vuelta de la rueda! Los que traen prisa esperan menos pero dejan doble propina.",
+                Stars = new[] { 180, 400, 675 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Feria, Name = "Bien cargados", Description = "Pedidos largos: de 2 a 4 cosas encima.",
+                MaxCustomers = 3, Patience = 46f, MinExtras = 2, MaxExtras = 4, Meats = TodaLaFeria, PowerUps = P3, Specials = S2, SpecialChance = 0.15f,
+                Intro = "Hoy los piden bien cargados. Cada antojo lleva lo suyo: revisa bien el globito.",
+                Stars = new[] { 140, 340, 560 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Feria, Name = "Cero errores", Description = "Regla: un pedido equivocado y no hay estrellas.",
+                MaxCustomers = 3, Patience = 46f, MaxExtras = 3, Meats = TodaLaFeria, Rule = MissionRule.NoErrors, PowerUps = P4, Specials = S2, SpecialChance = 0.2f,
+                Intro = "Cero errores: si entregas algo mal o se te va un cliente, la misión no da estrellas.",
+                Stars = new[] { 165, 385, 575 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Feria, Name = "Antojo de la tarde", Description = "Elotes y tamales: cuida que no se acaben.",
+                MaxCustomers = 3, Patience = 44f, MaxExtras = 3, Meats = FeriaDulce, RushChance = 0.2f, PowerUps = P4, Specials = S2, SpecialChance = 0.2f,
+                Intro = "Antojo de la tarde: todos quieren elote o tamal. Rellena antes de que se vacíen.",
+                Stars = new[] { 160, 370, 615 }, GapMin = 2f, GapMax = 3.5f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Feria, Name = "Noche de cohetes", Description = "Fuegos artificiales: mucha gente y clientes especiales.",
+                MaxCustomers = 3, Patience = 42f, MaxExtras = 3, Meats = TodaLaFeria, RushChance = 0.3f, PowerUps = P4, Specials = S3, SpecialChance = 0.25f,
+                Intro = "¡Noche de cohetes! Todo el pueblo vino a ver el castillo. Llega el Mariachi con hambre.",
+                Stars = new[] { 165, 370, 625 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Feria, Name = "Maestro de la feria", Description = "Pedidos largos y sin un solo error.",
+                MaxCustomers = 3, Patience = 46f, MinExtras = 3, MaxExtras = 4, Meats = TodaLaFeria, Rule = MissionRule.NoErrors, PowerUps = P4, Specials = S3, SpecialChance = 0.2f,
+                Intro = "Ahora sí, todo bien preparado y sin errores. Respira hondo.",
+                Stars = new[] { 135, 315, 555 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Feria, Name = "Último día de feria", Description = "Todos quieren llevarse su antojo antes de que se acabe.",
+                MaxCustomers = 3, Patience = 40f, MinExtras = 2, MaxExtras = 4, Meats = TodaLaFeria, RushChance = 0.35f, PowerUps = P4, Specials = S3, SpecialChance = 0.25f,
+                Intro = "¡Último día de feria! Todos quieren su antojo antes de que se acabe.",
+                Stars = new[] { 155, 345, 615 }, GapMin = 2.5f, GapMax = 4f
+            },
+            new LevelConfig
+            {
+                Stall = Stall.Feria, Name = "El gran jurado", Description = "Turno de 2 minutos y el jurado pide 4 platos.",
+                Duration = 120f, MaxCustomers = 3, Patience = 42f, MinExtras = 2, MaxExtras = 4, RushChance = 0.3f, Meats = TodaLaFeria,
+                PowerUps = P4, Specials = S3, SpecialChance = 0.25f,
+                BossAt = 35f, BossItems = 4, BossName = "el Gran Jurado de la Feria",
+                Intro = "Llegó el Gran Jurado de la Feria: prueba 4 antojos distintos, uno tras otro. ¡Si queda contento, eres el mejor de todos los puestos!",
+                Stars = new[] { 320, 670, 945 }, GapMin = 2.5f, GapMax = 4.5f, LateAfter = 80f
+            }
+        };
+
         /// <summary>Todas las misiones de la campaña, mundo tras mundo (12 por mundo). El guardado usa este orden.</summary>
-        public static readonly LevelConfig[][] Worlds = { Zona1, Garnachas, Elotes };
+        public static readonly LevelConfig[][] Worlds = { Zona1, Garnachas, Elotes, Pozole, Tamales, Feria };
 
         /// <summary>Los 3 turnos del prototipo T1 (las primeras 3 misiones).</summary>
         public static readonly LevelConfig[] Turnos = { Zona1[0], Zona1[1], Zona1[2] };
@@ -432,12 +729,30 @@ namespace Tacos.Logic
             new TaqueroDef { Id = "chuy", Name = "El Chuy", Perk = "Ollas 10 % más rápido y clientes 10 % más pacientes.", CookMultiplier = 0.9f, PatienceMultiplier = 1.1f }
         };
 
-        public static TaqueroDef[] For(Stall s) => s == Stall.Garnachas ? Garnacheros : s == Stall.Elotes ? Eloteros : Starters;
+        // Pozole y tamales tampoco tienen comal: el tercero tiene un poco de los dos, como en los elotes
+        public static readonly TaqueroDef[] Pozoleros =
+        {
+            new TaqueroDef { Id = "rosa", Name = "La Rosa", Perk = "Rellena las ollas 20 % más rápido.", CookMultiplier = 0.8f },
+            new TaqueroDef { Id = "goyo", Name = "Don Goyo", Perk = "Los clientes tienen 20 % más paciencia.", PatienceMultiplier = 1.2f },
+            new TaqueroDef { Id = "nacho", Name = "El Nacho", Perk = "Ollas 10 % más rápido y clientes 10 % más pacientes.", CookMultiplier = 0.9f, PatienceMultiplier = 1.1f }
+        };
+        public static readonly TaqueroDef[] Tamaleros =
+        {
+            new TaqueroDef { Id = "lencha", Name = "La Lencha", Perk = "La vaporera cuece 20 % más rápido.", CookMultiplier = 0.8f },
+            new TaqueroDef { Id = "fili", Name = "Don Fili", Perk = "Los clientes tienen 20 % más paciencia.", PatienceMultiplier = 1.2f },
+            new TaqueroDef { Id = "tono", Name = "El Toño", Perk = "Vaporera 10 % más rápido y clientes 10 % más pacientes.", CookMultiplier = 0.9f, PatienceMultiplier = 1.1f }
+        };
+        /// <summary>En la feria se juntan los mejores de cada puesto (mismo lugar = misma ventaja).</summary>
+        public static readonly TaqueroDef[] Feriantes = { Eloteros[0], Garnacheros[1], Eloteros[2] };
+
+        static readonly TaqueroDef[][] ByStall = { Starters, Garnacheros, Eloteros, Pozoleros, Tamaleros, Feriantes };
+
+        public static TaqueroDef[] For(Stall s) => ByStall[(int)s];
 
         /// <summary>El lugar (0, 1 o 2) de un cocinero en la lista de su puesto.</summary>
         public static int SlotOf(TaqueroDef t)
         {
-            foreach (var list in new[] { Starters, Garnacheros, Eloteros })
+            foreach (var list in ByStall)
                 for (int i = 0; i < list.Length; i++) if (list[i] == t || list[i].Id == t.Id) return i;
             return 0;
         }
