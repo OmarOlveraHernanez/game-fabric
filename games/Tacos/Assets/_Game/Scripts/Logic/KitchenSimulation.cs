@@ -81,7 +81,9 @@ namespace Tacos.Logic
         public readonly MeatPot[] Pots;
         public readonly Plate[] Plates;
 
-        public float CookTime => Rules.CookTime * Taquero.CookMultiplier;
+        public float CookTime => Rules.CookTime * Taquero.CookMultiplier * Level.StallDef.PotTimeScale;
+        /// <summary>Porciones de una olla llena (la vaporera de tamales rinde mas).</summary>
+        public int PotSize => Rules.PotPortions + Level.StallDef.ExtraPortions;
         /// <summary>La regla especial de la mision se rompio: la mision no da estrellas.</summary>
         public bool RuleBroken =>
             (Level.Rule == MissionRule.NoErrors && Failed > 0) || (Level.Rule == MissionRule.NoBurn && Burned > 0) || BossFailed;
@@ -132,7 +134,7 @@ namespace Tacos.Logic
             Comal = new ComalItem[Taquero.ComalSlots];
             Pots = new MeatPot[Level.Meats.Length];
             for (int i = 0; i < Pots.Length; i++)
-                Pots[i] = new MeatPot { Meat = Level.Meats[i], Portions = Rules.PotPortions };
+                Pots[i] = new MeatPot { Meat = Level.Meats[i], Portions = PotSize };
             Plates = new Plate[Rules.PlateCount];
             for (int i = 0; i < Plates.Length; i++)
             {
@@ -198,7 +200,7 @@ namespace Tacos.Logic
             {
                 if (!p.IsRefilling) continue;
                 p.Refill -= dt;
-                if (p.Refill <= 0f) { p.Refill = 0f; p.Portions = Rules.PotPortions; PotRefilled?.Invoke(p.Meat); }
+                if (p.Refill <= 0f) { p.Refill = 0f; p.Portions = PotSize; PotRefilled?.Invoke(p.Meat); }
             }
 
             if (NopalLeft > 0f) NopalLeft = Math.Max(0f, NopalLeft - dt);
@@ -307,7 +309,8 @@ namespace Tacos.Logic
         public Order NewOrder()
         {
             var meat = Level.OnlyMeat != Meat.None ? Level.OnlyMeat : Level.Meats[_rng.Next(Level.Meats.Length)];
-            var def = Level.StallDef;
+            var stall = Level.StallDef;
+            var def = stall.PartFor(meat); // en la feria cada antojo trae sus extras
             var pool = new List<Extra>(def.Common);
             if (def.Special != Extra.None && meat == def.SpecialMeat) pool.Add(def.Special);
             if (def.OneOf.Length == 2) pool.Add(_rng.NextDouble() < 0.5 ? def.OneOf[0] : def.OneOf[1]);
@@ -324,7 +327,7 @@ namespace Tacos.Logic
             for (int i = 0; i < k; i++) extras |= pool[i];
             if ((extras & def.NeedsFirst) != 0) extras |= def.First; // nadie pide queso sin su mayonesa
             var bases = Level.OrderBases;
-            var b = def.AutoBase ? def.BaseFor(meat)
+            var b = stall.AutoBase ? stall.BaseFor(meat)
                   : bases.Length == 1 ? bases[0] : bases[_rng.Next(bases.Length)]; // con una sola base no se gasta azar (la taqueria queda igual)
             return new Order(b, meat, extras);
         }
@@ -364,6 +367,15 @@ namespace Tacos.Logic
             if (!Level.NeedsTortilla) return CommandResult.NotInThisLevel;
             if (b == Base.None) b = Level.OrderBases[0];
             if (Array.IndexOf(Level.StallDef.Bases, b) < 0) return CommandResult.InvalidArgument;
+            if (Level.StallDef.InstantBase)
+            {
+                // Pozole y tamales: el plato (o la hoja, o el bolillo) va directo a la tabla
+                int p = Destination(pl => !pl.Tortilla);
+                if (p < 0) return CommandResult.NoFreePlate;
+                Plates[p].Base = b;
+                SelectedPlate = p;
+                return CommandResult.Ok;
+            }
             int i = Array.IndexOf(Comal, null);
             if (i < 0) return CommandResult.ComalFull;
             Comal[i] = new ComalItem { Base = b };
@@ -407,7 +419,7 @@ namespace Tacos.Logic
             var pot = Pot(meat);
             if (pot == null) return CommandResult.InvalidArgument;
             if (pot.IsRefilling) return CommandResult.PotRefilling;
-            if (pot.Portions >= Rules.PotPortions) return CommandResult.PotFull;
+            if (pot.Portions >= PotSize) return CommandResult.PotFull;
             pot.Refill = CookTime;
             return CommandResult.Ok;
         }
@@ -415,7 +427,7 @@ namespace Tacos.Logic
         /// <summary>Plato vacio: con tortilla si no hay comal; en los elotes la base la pone lo principal.</summary>
         void ClearPlate(Plate p)
         {
-            if (Level.StallDef.AutoBase) p.Clear(Base.None);
+            if (Level.StallDef.AutoBase || Level.StallDef.InstantBase) p.Clear(Base.None);
             else p.Clear(!Level.NeedsTortilla);
         }
 
@@ -425,12 +437,22 @@ namespace Tacos.Logic
             if (pot == null) return CommandResult.InvalidArgument;
             if (pot.IsRefilling) return CommandResult.PotRefilling;
             if (pot.Portions <= 0) return CommandResult.PotEmpty;
+            // El plato grande de pozole lleva otro cucharon de lo mismo
+            int more = Destination(pl => pl.Meat == meat && pl.NeedsScoop);
+            if (more >= 0)
+            {
+                Plates[more].Scoops = Math.Max(1, Plates[more].Scoops) + 1;
+                SelectedPlate = more;
+                pot.Portions--;
+                return CommandResult.Ok;
+            }
             bool auto = Level.StallDef.AutoBase;
             int p = Destination(pl => (pl.Tortilla || auto) && !pl.HasMeat);
             if (p < 0)
                 return FindPlate(pl => !pl.HasMeat) >= 0 ? CommandResult.NeedTortillaFirst : CommandResult.PlatesFull;
             if (auto) Plates[p].Base = Level.StallDef.BaseFor(meat);
             Plates[p].Meat = meat;
+            Plates[p].Scoops = 1;
             SelectedPlate = p;
             pot.Portions--;
             return CommandResult.Ok;
@@ -438,10 +460,11 @@ namespace Tacos.Logic
 
         CommandResult ToggleExtra(Extra e)
         {
-            var def = Level.StallDef;
-            if (Array.IndexOf(def.AllExtras, e) < 0) return CommandResult.InvalidArgument;
+            if (Array.IndexOf(Level.StallDef.AllExtras, e) < 0) return CommandResult.InvalidArgument;
             var pl = Plates[SelectedPlate];
             if (!pl.HasMeat) return CommandResult.NeedMeatFirst;
+            var def = Level.StallDef.PartFor(pl.Meat); // en la feria y los tamales, las reglas de ese antojo
+            if (Array.IndexOf(def.AllExtras, e) < 0) return CommandResult.NotForThis;
             if ((pl.Extras & e) != 0)
             {
                 // la mayonesa no se quita si ya tiene queso o chile encima
@@ -585,14 +608,14 @@ namespace Tacos.Logic
                     SalsaLeft = Rules.SalsaTime;
                     break;
                 case PowerUp.Trompo:
-                    foreach (var pot in Pots) { pot.Refill = 0f; pot.Portions = Rules.PotPortions; }
+                    foreach (var pot in Pots) { pot.Refill = 0f; pot.Portions = PotSize; }
                 {
                     // Todo lo del comal queda listo (y ya volteado), y los lugares vacios se llenan
                     bool flip = Level.StallDef.Flip;
                     foreach (var t in Comal)
                         if (t != null && TortillaState(t) != CookState.Burned && (flip ? !t.Flipped || t.Age < HotTime : t.Age < HotTime))
                         { t.Flipped = flip; t.Age = HotTime; }
-                    if (Level.NeedsTortilla)
+                    if (Level.NeedsTortilla && Level.StallDef.HasComal)
                     {
                         var bases = Level.OrderBases;
                         for (int i = 0; i < Comal.Length; i++)

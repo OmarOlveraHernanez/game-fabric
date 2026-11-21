@@ -17,13 +17,14 @@ namespace Tacos
         sealed class DragSpec
         {
             public Func<Sprite> Ghost;              // null = ahora no hay nada que arrastrar
+            public Func<Sprite> GhostTop;           // lo que va encima (el guisado sobre la masa); null = nada
             public float Size;                       // pixeles de la imagen
             public Func<List<RectTransform>> Targets;
             public Action<RectTransform> Drop;
         }
 
         RectTransform _dragLayer, _glowLayer, _domeDrop, _rawHot;
-        Image _ghost;
+        Image _ghost, _ghostTop;
         readonly List<Image> _dropRings = new List<Image>();
         DragSpec _dragging;
         List<RectTransform> _dragTargets;
@@ -48,18 +49,36 @@ namespace Tacos
             _ghost.raycastTarget = false;
             _ghost.preserveAspect = true;
             _ghost.enabled = false;
+            _ghostTop = UiKit.NewRect("LoDeEncima", _ghost.transform).gameObject.AddComponent<Image>();
+            _ghostTop.raycastTarget = false;
+            _ghostTop.preserveAspect = true;
+            _ghostTop.enabled = false;
+            var gt = _ghostTop.rectTransform;
+            gt.anchorMin = new Vector2(0.14f, 0.2f); gt.anchorMax = new Vector2(0.86f, 0.92f);
+            gt.offsetMin = gt.offsetMax = Vector2.zero;
             var g = _ghost.rectTransform;
             g.anchorMin = g.anchorMax = g.pivot = new Vector2(0.5f, 0.5f);
 
-            // Bases: de su pila al domo o al comal (tortillas; o sopes, gorditas y quesadillas)
+            // Bases: de su pila al domo o al comal (tortillas; o sopes, gorditas y quesadillas).
+            // En el pozole y los tamales no hay comal: el plato, la hoja o el bolillo van directo a la tabla.
             foreach (var (b, hot) in _stacks)
             {
                 var bb = b;
                 Draggable(hot, new DragSpec
                 {
                     Ghost = () => _sim != null && _sim.Level.NeedsTortilla ? (bb == Base.Tortilla ? TacosArt.Get("ing_tortillas") : TacosArt.Base(bb, false)) : null,
-                    Size = bb == Base.Tortilla ? 100f : 110f,
-                    Targets = () => One(_domeDrop), Drop = t => _do(Command.AddTortilla(bb))
+                    Size = bb == Base.Tortilla ? 100f : bb == Base.PlatoGrande ? 130f : 110f,
+                    Targets = () => Instant ? PlateTargets() : One(_domeDrop),
+                    Drop = t =>
+                    {
+                        if (Instant)
+                        {
+                            int p = PlateIndex(t);
+                            if (p < 0) return;
+                            _do(Command.SelectPlate(p));
+                        }
+                        _do(Command.AddTortilla(bb));
+                    }
                 });
             }
             // Del domo al plato: ver MakeTortillaDraggable (los lugares del domo se crean en cada mision)
@@ -95,13 +114,25 @@ namespace Tacos
                 int p = i;
                 Draggable(_plates[i].Hot, new DragSpec
                 {
-                    Ghost = () => _sim != null && p < _sim.Plates.Length && _sim.Plates[p].HasMeat ? TacosArt.Get("ing_taco") : null, Size = 110f,
-                    Targets = () => { var l = new List<RectTransform>(); foreach (var c in _customers) if (c.Hot.gameObject.activeInHierarchy) l.Add(c.Hot); l.Add(_trashHot); return l; },
+                    Ghost = () => _sim != null && p < _sim.Plates.Length && _sim.Plates[p].HasMeat ? PlateGhost(_sim.Plates[p]) : null,
+                    GhostTop = () => _sim != null && p < _sim.Plates.Length && IsMasa(_sim.Plates[p].Base) ? TacosArt.Meat(_sim.Plates[p].Meat) : null,
+                    Size = 110f,
+                    // Se entrega soltando en la cara del cliente o en SU globito (el globito queda a un lado y antes
+                    // contaba como del cliente de junto; ahora gana lo que este mas cerca del dedo)
+                    Targets = () =>
+                    {
+                        var l = new List<RectTransform>();
+                        foreach (var c in _customers)
+                            if (c.Hot.gameObject.activeInHierarchy) { l.Add(c.Hot); if (c.BubbleShown) l.Add(c.Bubble); }
+                        l.Add(_trashHot);
+                        return l;
+                    },
                     Drop = t =>
                     {
                         _do(Command.SelectPlate(p));
                         if (t == _trashHot) { _do(Command.TrashPlate(p)); return; }
-                        for (int c = 0; c < _customers.Length; c++) if (_customers[c].Hot == t) _do(Command.Deliver(c));
+                        for (int c = 0; c < _customers.Length; c++)
+                            if (_customers[c].Hot == t || _customers[c].Bubble == t) { _do(Command.Deliver(c)); return; }
                     }
                 });
             }
@@ -162,7 +193,32 @@ namespace Tacos
             return -1;
         }
 
+        /// <summary>
+        /// Lo que se ve al arrastrar un plato: lo que de veras lleva (antes siempre era un taco, aunque fuera un elote o un pozole).
+        /// </summary>
+        static Sprite PlateGhost(Plate p)
+        {
+            if (p.Base == Base.Tortilla) return TacosArt.Get("ing_taco") ?? TacosArt.Meat(p.Meat);
+            if (IsMasa(p.Base)) return TacosArt.Base(p.Base, true) ?? TacosArt.Meat(p.Meat); // la masa dorada, con su guisado encima (GhostTop)
+            return TacosArt.Meat(p.Meat); // elote, esquite, pozole servido, tamal
+        }
+
+        static bool IsMasa(Base b) => b == Base.Sope || b == Base.Gordita || b == Base.Quesadilla;
+
         static List<RectTransform> One(RectTransform t) => new List<RectTransform> { t };
+
+        /// <summary>La base va directo de su pila al plato (pozole y tamales).</summary>
+        bool Instant => _sim != null && _sim.Level.StallDef.InstantBase;
+
+        /// <summary>El plato donde caeria una base: el elegido si esta vacio, si no el primero vacio.</summary>
+        RectTransform FreePlateHot()
+        {
+            if (_sim == null) return null;
+            int sel = Mathf.Clamp(_sim.SelectedPlate, 0, _sim.Plates.Length - 1);
+            if (!_sim.Plates[sel].Tortilla) return _plates[sel].Hot;
+            for (int i = 0; i < _sim.Plates.Length; i++) if (!_sim.Plates[i].Tortilla) return _plates[i].Hot;
+            return _plates[sel].Hot;
+        }
 
         void Draggable(RectTransform hot, DragSpec spec)
         {
@@ -177,6 +233,9 @@ namespace Tacos
                 _dragTargets = spec.Targets();
                 _ghost.sprite = sprite;
                 _ghost.enabled = true;
+                var top = spec.GhostTop?.Invoke();
+                _ghostTop.sprite = top;
+                _ghostTop.enabled = top != null;
                 float k = _stage.Root.rect.width / W;
                 _ghost.rectTransform.sizeDelta = new Vector2(spec.Size * k, spec.Size * k);
                 _dragLayer.SetAsLastSibling();
@@ -202,15 +261,25 @@ namespace Tacos
             // un poco arriba del dedo para que se vea lo que llevas
             _ghost.rectTransform.anchoredPosition = local + new Vector2(0f, _dragging.Size * 0.45f * k);
 
+            // Mas facil de atinar (con el dedo o con la pluma se salia del plato y no lo tomaba):
+            // cuenta el dedo Y el dibujo que llevas (va un poco arriba del dedo), cada lugar tiene un margen de mas,
+            // y el lugar que ya estaba iluminado se sostiene hasta alejarse bastante.
+            var ghostScreen = RectTransformUtility.WorldToScreenPoint(null, _ghost.rectTransform.position);
+            float margin = Screen.width * 0.035f, keep = Screen.width * 0.07f;
+            var prev = _hover;
             _hover = null;
             float best = float.MaxValue;
             foreach (var t in _dragTargets)
             {
                 if (t == null || !t.gameObject.activeInHierarchy) continue;
-                if (!RectTransformUtility.RectangleContainsScreenPoint(t, screen, null)) continue;
+                float m = t == prev ? keep : margin;
                 var c = RectTransformUtility.WorldToScreenPoint(null, t.TransformPoint(t.rect.center));
-                float d = (c - screen).sqrMagnitude;
-                if (d < best) { best = d; _hover = t; }
+                foreach (var pt in new[] { screen, ghostScreen })
+                {
+                    if (!InsideWithMargin(t, pt, m)) continue;
+                    float d = (c - pt).sqrMagnitude * (t == prev ? 0.6f : 1f);
+                    if (d < best) { best = d; _hover = t; }
+                }
             }
             // Solo se ilumina el lugar que esta debajo del dedo (los aros en todos parecian pistas del tutorial)
             for (int i = 0; i < _dropRings.Count; i++)
@@ -231,11 +300,23 @@ namespace Tacos
             _ghost.rectTransform.localScale = new Vector3(s, s, 1f);
         }
 
+        static readonly Vector3[] Corners = new Vector3[4];
+
+        /// <summary>El punto cae dentro del lugar, contando un margen alrededor (en pixeles de pantalla).</summary>
+        static bool InsideWithMargin(RectTransform t, Vector2 screen, float margin)
+        {
+            t.GetWorldCorners(Corners);
+            Vector2 a = RectTransformUtility.WorldToScreenPoint(null, Corners[0]), b = RectTransformUtility.WorldToScreenPoint(null, Corners[2]);
+            return screen.x >= Mathf.Min(a.x, b.x) - margin && screen.x <= Mathf.Max(a.x, b.x) + margin
+                && screen.y >= Mathf.Min(a.y, b.y) - margin && screen.y <= Mathf.Max(a.y, b.y) + margin;
+        }
+
         void EndDrag()
         {
             _dragging = null;
             _hover = null;
             _ghost.enabled = false;
+            _ghostTop.enabled = false;
             foreach (var r in _dropRings) { r.enabled = false; r.rectTransform.SetParent(_glowLayer, false); }
         }
 
@@ -247,7 +328,7 @@ namespace Tacos
             RectTransform plate = _plates[h.Plate >= 0 && h.Plate < _plates.Length ? h.Plate : sel].Hot;
             switch (h.Kind)
             {
-                case HintKind.AddTortilla: return (StackFor(h.Command.HasValue ? (Base)h.Command.Value.Arg : Base.None), _domeDrop);
+                case HintKind.AddTortilla: return (StackFor(h.Command.HasValue ? (Base)h.Command.Value.Arg : Base.None), Instant ? FreePlateHot() : _domeDrop);
                 case HintKind.TakeTortilla: return h.Slot >= 0 && h.Slot < _tortillas.Count ? (_tortillas[h.Slot].Hot, plate) : ((RectTransform, RectTransform)?)null;
                 case HintKind.ServeMeat:
                 {

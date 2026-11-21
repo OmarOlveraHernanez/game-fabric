@@ -9,11 +9,20 @@ namespace Tacos.Logic
         // Garnachas (guisados en cazuela)
         Chicharron = 5, Tinga = 6, PapaChorizo = 7, Frijoles = 8,
         // Elotes (ollas del carrito)
-        Elote = 9, Esquite = 10, EloteAsado = 11 // el asado sale del anafre
+        Elote = 9, Esquite = 10, EloteAsado = 11, // el asado sale del anafre
+        // Pozoleria (ollas de pozole)
+        PozoleRojo = 12, PozoleBlanco = 13, PozoleVerde = 14,
+        // Tamales (la vaporera)
+        TamalVerde = 15, TamalRojo = 16, TamalRajas = 17, TamalDulce = 18
     }
 
     /// <summary>La base que se calienta en el comal: tortilla en la taqueria; sope, gordita o quesadilla en las garnachas.</summary>
-    public enum Base { None = 0, Tortilla = 1, Sope = 2, Gordita = 3, Quesadilla = 4, Palito = 5, Vaso = 6 }
+    public enum Base
+    {
+        None = 0, Tortilla = 1, Sope = 2, Gordita = 3, Quesadilla = 4, Palito = 5, Vaso = 6,
+        PlatoChico = 7, PlatoGrande = 8,  // pozole: el grande lleva 2 cucharones
+        Hoja = 9, Guajolota = 10          // tamales: en su hoja o en bolillo
+    }
 
     /// <summary>Extras de un taco. Se combinan como banderas (un taco puede llevar varios).</summary>
     [Flags]
@@ -33,7 +42,14 @@ namespace Tacos.Logic
         // Elotes
         Mayonesa = 512,
         ChilePolvo = 1024,
-        Picante = 2048
+        Picante = 2048,
+        // Pozole
+        Rabano = 4096,
+        Oregano = 8192,
+        // Tamales: el atole del combo
+        Champurrado = 16384,
+        AtoleArroz = 32768,
+        AtoleFresa = 65536
     }
 
     public static class Extras
@@ -43,7 +59,8 @@ namespace Tacos.Logic
             {
                 Extra.Cebolla, Extra.Cilantro, Extra.Pina, Extra.SalsaVerde, Extra.SalsaRoja, Extra.Limon,
                 Extra.Mayonesa, // antes que el queso y el chile: en los elotes la mayonesa va primero
-                Extra.Crema, Extra.Queso, Extra.Lechuga, Extra.ChilePolvo, Extra.Picante
+                Extra.Crema, Extra.Queso, Extra.Lechuga, Extra.ChilePolvo, Extra.Picante,
+                Extra.Rabano, Extra.Oregano, Extra.Champurrado, Extra.AtoleArroz, Extra.AtoleFresa
             };
 
         public const Extra Salsas = Extra.SalsaVerde | Extra.SalsaRoja;
@@ -77,11 +94,16 @@ namespace Tacos.Logic
         public bool Tortilla { get => Base != Base.None; set => Base = value ? Base.Tortilla : Base.None; }
         public Meat Meat;
         public Extra Extras;
+        /// <summary>Cucharones servidos (el plato grande de pozole lleva 2; todo lo demas, 1).</summary>
+        public int Scoops;
 
+        public static int ScoopsFor(Base b) => b == Base.PlatoGrande ? 2 : 1;
         public bool HasMeat => Meat != Meat.None;
+        /// <summary>Ya tiene lo principal pero le falta otro cucharon.</summary>
+        public bool NeedsScoop => HasMeat && Math.Max(1, Scoops) < ScoopsFor(Base);
         public bool IsEmpty => !Tortilla && !HasMeat && Extras == Extra.None;
 
-        public bool Matches(Order o) => Base == o.Base && Meat == o.Meat && Extras == o.Extras;
+        public bool Matches(Order o) => Base == o.Base && Meat == o.Meat && Extras == o.Extras && !NeedsScoop;
 
         /// <summary>El plato va camino a este pedido: misma carne y ningun extra que el cliente no pidio.</summary>
         public bool IsHeadingTo(Order o) => HasMeat && Base == o.Base && Meat == o.Meat && (Extras & ~o.Extras) == 0;
@@ -93,6 +115,7 @@ namespace Tacos.Logic
             Base = b;
             Meat = Meat.None;
             Extras = Extra.None;
+            Scoops = 0;
         }
     }
 }

@@ -88,6 +88,9 @@ namespace Tacos
             _messLayer = UiKit.Stretch(UiKit.NewRect("Suciedad", root));     // lo que se va tirando en la barra (debajo de los platos)
 
             for (int i = 0; i < 3; i++) _customers[i] = new CustomerView(this, i);
+            // Lo que sobresale de la barra (cucharones, vasos) se dibuja otra vez encima de la gente
+            if (L.Front != null && TacosArt.Get(L.Front) != null)
+                _stage.Pic("Enfrente", TacosArt.Get(L.Front), new Rect(0, 0, W, H)).raycastTarget = false;
 
             _trompoHot = _stage.Hotspot("Trompo", TrompoArea, () => TapPot(Meat.Pastor));
             _trompoBadge = new BadgeView(this, "TrompoPorciones", TrompoBadge, 50f);
@@ -470,6 +473,54 @@ namespace Tacos
 
         // =============== toques ===============
 
+        /// <summary>
+        /// Tocar a un cliente (o su globito) le entrega SU pedido: se busca el plato que ya va igual a lo que pidio.
+        /// Antes se entregaba el plato elegido, y si estabas armando otro, el cliente decia que no era el suyo.
+        /// </summary>
+        void TapCustomer(int slot)
+        {
+            if (_sim == null || slot >= _sim.Customers.Length) return;
+            var c = _sim.Customers[slot];
+            if (c != null)
+            {
+                for (int p = 0; p < _sim.Plates.Length; p++)
+                    if (_sim.Plates[p].Matches(c.Order)) { _do(Command.SelectPlate(p)); _do(Command.Deliver(slot)); return; }
+                // Casi listo: en vez de darle algo mal (y que se vaya), se dice que le falta
+                string why = WhatsMissing(c.Order);
+                if (why != null) { Notice?.Invoke(why); return; }
+            }
+            _do(Command.Deliver(slot));
+        }
+
+        /// <summary>Avisos para el jugador (los muestra TacosGame como letrerito).</summary>
+        public event Action<string> Notice;
+
+        /// <summary>Si hay un plato con lo mismo principal pero no igual al pedido: que le falta o le sobra. null = no hay ninguno parecido.</summary>
+        string WhatsMissing(Order o)
+        {
+            for (int p = 0; p < _sim.Plates.Length; p++)
+            {
+                var pl = _sim.Plates[p];
+                if (pl.Meat != o.Meat) continue;
+                if (pl.Base != o.Base) return $"Va en {BaseWord(o.Base)}, no en {BaseWord(pl.Base)}";
+                if (pl.NeedsScoop) return "¡Le falta otro cucharón!";
+                var falta = new List<string>(); var sobra = new List<string>();
+                foreach (var e in Extras.All)
+                {
+                    bool want = (o.Extras & e) != 0, has = (pl.Extras & e) != 0;
+                    if (want && !has) falta.Add(ExtraLabel(e).ToLower());
+                    if (!want && has) sobra.Add(ExtraLabel(e).ToLower());
+                }
+                if (falta.Count > 0) return "Le falta: " + string.Join(", ", falta);
+                if (sobra.Count > 0) return "No pidió: " + string.Join(", ", sobra);
+            }
+            return null;
+        }
+
+        static string BaseWord(Base b) =>
+            b == Base.Hoja ? "hoja" : b == Base.Guajolota ? "bolillo" : b == Base.PlatoChico ? "plato chico" : b == Base.PlatoGrande ? "plato grande"
+            : b == Base.Sope ? "sope" : b == Base.Gordita ? "gordita" : b == Base.Quesadilla ? "quesadilla" : "tortilla";
+
         void TapPot(Meat m)
         {
             if (_sim == null) return;
@@ -485,7 +536,7 @@ namespace Tacos
             MeatPot best = null;
             foreach (var p in _sim.Pots)
             {
-                if (p.Meat == Meat.Pastor || p.IsRefilling || p.Portions >= _sim.Rules.PotPortions) continue;
+                if (p.Meat == Meat.Pastor || p.IsRefilling || p.Portions >= _sim.PotSize) continue;
                 if (best == null || p.Portions < best.Portions) best = p;
             }
             if (best != null) _do(Command.RefillMeat(best.Meat));
@@ -520,14 +571,18 @@ namespace Tacos
                 if (!on) return;
                 if (pot.IsRefilling)
                 {
+                    _bg.rectTransform.localScale = Vector3.one;
                     _ring.fillAmount = 1f - pot.Refill / s.CookTime;
                     _ring.color = UiKit.Maiz;
                     _text.text = Mathf.CeilToInt(pot.Refill).ToString();
                     _text.color = UiKit.Maiz;
                     return;
                 }
-                float r = (float)pot.Portions / s.Rules.PotPortions;
+                float r = (float)pot.Portions / s.PotSize;
                 _ring.fillAmount = r;
+                // ya casi se acaba: el numero late para avisar
+                float pulse = pot.Portions > 0 && pot.Portions <= 2 ? 1f + 0.12f * Mathf.Sin(Time.unscaledTime * 8f) : 1f;
+                _bg.rectTransform.localScale = new Vector3(pulse, pulse, 1f);
                 _ring.color = pot.Portions == 0 ? UiKit.Chile : r <= 0.4f ? UiKit.Maiz : UiKit.Limon;
                 _text.text = pot.Portions == 0 ? "+" : pot.Portions.ToString();
                 _text.color = pot.Portions == 0 ? UiKit.Chile : Color.white;
@@ -537,10 +592,66 @@ namespace Tacos
         // ---- un cazo en la choricera ----
         sealed class BowlView
         {
-            readonly Image _heap, _cover;
-            readonly Text _name;
+            readonly Image _heap, _cover, _under, _emptyBg;
+            readonly Text _name, _empty;
+            readonly Vector2 _hs;
+            readonly Sprite _holeArt, _lvlMid, _lvlLow;
+            readonly Image _level;
+
+            /// <summary>Llena (nada encima), a la mitad o casi vacia segun las porciones que quedan.</summary>
+            void ShowLevel(KitchenSimulation s)
+            {
+                if (_level == null) return;
+                if (_pot == null) { _level.enabled = false; return; }
+                float left = _pot.IsRefilling ? 0f : (float)_pot.Portions / s.PotSize;
+                var spr = left <= 0.34f ? _lvlLow : left <= 0.67f ? _lvlMid : null;
+                _level.sprite = spr;
+                _level.enabled = spr != null;
+            }
+            readonly Image[] _holes = new Image[12];
+
+            /// <summary>Que se ve al sacar de cada olla: el caldo de su color, agua de elote, fondo de barro o de vaporera.</summary>
+            static string HoleArt(Meat m)
+            {
+                switch (m)
+                {
+                    case Meat.PozoleRojo: return "hueco_rojo";
+                    case Meat.PozoleBlanco: return "hueco_blanco";
+                    case Meat.PozoleVerde: return "hueco_verde";
+                    case Meat.Elote: case Meat.Esquite: return "hueco_agua";
+                    case Meat.TamalVerde: case Meat.TamalRojo: case Meat.TamalRajas: case Meat.TamalDulce: return "hueco_vaporera";
+                    case Meat.Pastor: return null;
+                    default: return "hueco_barro"; // carnes de la taqueria, asados
+                }
+            }
+
+            /// <summary>
+            /// Lo que se ve conforme se acaba: un cucharonazo por porcion servida; ya vacia, el fondo entero.
+            /// Al rellenarse se van llenando otra vez. Regresa false si no hay dibujos (se usa la sombra de antes).
+            /// </summary>
+            bool ShowHoles(KitchenSimulation s)
+            {
+                if (_holeArt == null || L.FullPots != null) return false;
+                if (_pot == null) { foreach (var h in _holes) if (h != null) h.enabled = false; return false; }
+                int served = s.PotSize - _pot.Portions;
+                float refill = _pot.IsRefilling ? _pot.Refill / s.CookTime : 1f; // 1 = recien vacia, 0 = ya llena
+                for (int h = 0; h < _holes.Length; h++)
+                {
+                    if (_holes[h] == null) continue;
+                    bool on = _pot.IsRefilling ? h < s.PotSize : h < served;
+                    _holes[h].enabled = on;
+                    if (on) _holes[h].color = new Color(1f, 1f, 1f, _pot.IsRefilling ? refill : 1f);
+                }
+                bool empty = _pot.Portions <= 0 || _pot.IsRefilling;
+                _cover.sprite = _holeArt;
+                _cover.enabled = empty;
+                _cover.rectTransform.localScale = Vector3.one;
+                _cover.color = new Color(1f, 1f, 1f, _pot.IsRefilling ? refill : 1f);
+                return true;
+            }
             readonly BadgeView _badge;
             MeatPot _pot;
+            readonly bool _over;
             public readonly RectTransform Hot;
             public readonly Meat Meat;
 
@@ -556,13 +667,75 @@ namespace Tacos
                 // La cazuela pintada ya trae comida: cuando se vacia se tapa con su fondo oscuro
                 _cover = k._stage.Img("Vacio " + meat, UiKit.CircleSprite, new Color(0.22f, 0.12f, 0.07f, 0.96f), R(c.x, c.y - 2, hs.x * 0.92f, hs.y * 0.8f));
                 _cover.enabled = false;
+                _hs = hs;
+                // Niveles: la olla a la mitad y casi vacia (el caldo baja); van debajo de la tapa de vacia
+                if (L.Levels != null && i < L.Levels.Length && L.Levels[i] != null)
+                {
+                    _lvlMid = TacosArt.Get("nivel_" + L.Levels[i] + "_medio");
+                    _lvlLow = TacosArt.Get("nivel_" + L.Levels[i] + "_bajo");
+                    if (_lvlMid != null && _lvlLow != null)
+                    {
+                        _level = k._stage.Pic("Nivel " + meat, _lvlMid, L.LevelRects[i]);
+                        _level.preserveAspect = false;
+                        _level.raycastTarget = false;
+                        _level.enabled = false;
+                        _level.transform.SetSiblingIndex(_cover.transform.GetSiblingIndex());
+                    }
+                }
+                // Cucharonazos: huecos organicos (caldo, agua, fondo de la olla) que aparecen uno por porcion servida
+                _holeArt = null; // (los cucharonazos no le gustaron al usuario: se quitaron)
+                if (_holeArt != null && L.FullPots == null)
+                {
+                    _cover.sprite = _holeArt; // vacia: se ve el fondo con su caldito, no una sombra
+                    _cover.rectTransform.localScale = Vector3.one;
+                    var rnd = new System.Random(17 + i * 31);
+                    for (int h = 0; h < _holes.Length; h++)
+                    {
+                        // repartidos en la boca de la olla: los primeros cerca del centro, luego hacia la orilla
+                        float rr = Mathf.Sqrt((float)rnd.NextDouble()) * Mathf.Lerp(0.2f, 0.5f, h / (float)_holes.Length);
+                        float an = (float)(rnd.NextDouble() * Mathf.PI * 2);
+                        float px = c.x + Mathf.Cos(an) * rr * hs.x * 0.9f, py = c.y - 2 + Mathf.Sin(an) * rr * hs.y * 0.7f;
+                        float sz = Mathf.Lerp(0.36f, 0.48f, (float)rnd.NextDouble());
+                        _holes[h] = k._stage.Pic("Cucharonazo " + meat + " " + h, _holeArt, R(px, py, hs.x * sz, hs.y * sz * 1.25f));
+                        _holes[h].preserveAspect = false;
+                        _holes[h].raycastTarget = false;
+                        // variedad sin salirse de la boca: volteado o no, y apenas girado
+                        _holes[h].rectTransform.localRotation = Quaternion.Euler(0f, 0f, (float)rnd.NextDouble() * 16f - 8f);
+                        _holes[h].rectTransform.localScale = new Vector3(rnd.NextDouble() < 0.5 ? -1f : 1f, rnd.NextDouble() < 0.5 ? -1f : 1f, 1f);
+                        _holes[h].enabled = false;
+                    }
+                }
+                // Garnachas: debajo de la cazuela llena va la vacia; la llena se desvanece conforme se acaba
+                if (L.FullPots != null)
+                {
+                    _under = k._stage.Pic("CazuelaVacia " + meat, TacosArt.Get("cazuela_vacia"), R(c.x, c.y + 4, 202, 157));
+                    _under.enabled = false;
+                }
                 _heap = L.FullPots != null
                     ? k._stage.Pic("Cazuela " + meat, null, R(c.x, c.y + 4, 202, 157)) // del tamaño de la cazuela pintada (la del video)
                     : k._stage.Pic("Cazo " + meat, L.HeapSizes != null ? TacosArt.Pot(meat) : TacosArt.Meat(meat), R(c.x, c.y - 4, hs.x, hs.y));
                 if (L.HeapSizes != null) _heap.preserveAspect = false; // se acuesta en la boca de la olla
-                _name = k._stage.Label(MeatName(meat), 20, UiKit.Cream, R(c.x, c.y + hs.y * 0.63f, 170, 26));
-                Hot = k._stage.Hotspot("TocarCazo " + meat, R(c.x, c.y, Mathf.Max(150f, hs.x + 30f), 100), () => k.TapPot(meat));
-                _badge = new BadgeView(k, "Porciones " + meat, new Vector2(c.x + hs.x * 0.58f, c.y - 36), 44f);
+                var nameAt = L.NameAt != null && i < L.NameAt.Length ? L.NameAt[i] : new Vector2(c.x, c.y + hs.y * 0.63f);
+                _name = k._stage.Label(MeatName(meat), 20, UiKit.Cream, R(nameAt.x, nameAt.y, 170, 26));
+                float hotH = L.BowlHotH > 0f ? L.BowlHotH : Mathf.Max(100f, hs.y + 20f);
+                float hotY = L.BowlHotH > 0f ? c.y + hotH * 0.3f : c.y; // se toma tambien del cuerpo de la olla
+                Hot = k._stage.Hotspot("TocarCazo " + meat, R(c.x, hotY, Mathf.Max(150f, hs.x + 30f), hotH), () => k.TapPot(meat));
+                var badgeAt = L.BadgeAt != null && i < L.BadgeAt.Length ? L.BadgeAt[i] : new Vector2(c.x + hs.x * 0.58f, c.y - 36);
+                _badge = new BadgeView(k, "Porciones " + meat, badgeAt, 44f);
+                // Letrero claro cuando se acaba (se confundian: no sabian que ya no habia)
+                _emptyBg = k._stage.Img("SeAcabo " + meat, UiKit.RoundedSpritePublic, new Color(0.08f, 0.05f, 0.06f, 0.9f), R(c.x, c.y - 6, 200, 58));
+                _emptyBg.type = Image.Type.Sliced;
+                _emptyBg.raycastTarget = false;
+                _empty = UiKit.FillLabel(_emptyBg.transform, "", 20, UiKit.Chile, TextAnchor.MiddleCenter, 4f);
+                _empty.raycastTarget = false; // que no estorbe para tocar la olla
+                _emptyBg.enabled = _empty.enabled = false;
+                _over = L.PaintedFull && L.PaintOver != null && System.Array.IndexOf(L.PaintOver, meat) >= 0;
+                if (_over)
+                {
+                    // la olla del dibujo trae otra cosa: lo de esta olla va encima (detras de la tapa de vacio)
+                    _heap.sprite = TacosArt.Pot(meat);
+                    _heap.transform.SetSiblingIndex(_cover.transform.GetSiblingIndex());
+                }
             }
 
             public void Setup(MeatPot pot)
@@ -572,18 +745,52 @@ namespace Tacos
                 _name.enabled = pot != null;
             }
 
+            /// <summary>"¡Se acabó!" cuando esta vacia (late), "Rellenando..." mientras se rellena.</summary>
+            void EmptySign(KitchenSimulation s)
+            {
+                bool empty = _pot != null && _pot.Portions <= 0 && !_pot.IsRefilling;
+                bool refill = _pot != null && _pot.IsRefilling;
+                _emptyBg.enabled = _empty.enabled = empty || refill;
+                if (!_empty.enabled) return;
+                if (empty)
+                {
+                    _empty.text = "¡SE ACABÓ!\nToca para rellenar";
+                    _empty.color = new Color(1f, 0.45f, 0.38f);
+                    float b = 1f + 0.07f * Mathf.Sin(Time.unscaledTime * 7f);
+                    _emptyBg.rectTransform.localScale = new Vector3(b, b, 1f);
+                    _emptyBg.color = new Color(0.25f, 0.04f, 0.04f, 0.92f);
+                }
+                else
+                {
+                    _empty.text = "Rellenando… " + Mathf.CeilToInt(_pot.Refill);
+                    _empty.color = UiKit.Maiz;
+                    _emptyBg.rectTransform.localScale = Vector3.one;
+                    _emptyBg.color = new Color(0.08f, 0.05f, 0.06f, 0.8f);
+                }
+            }
+
             public void Refresh(KitchenSimulation s)
             {
                 _badge.Refresh(_pot, s);
+                EmptySign(s);
+                ShowLevel(s);
                 if (L.PaintedFull)
                 {
                     // Elotes: lo lleno ya esta en el dibujo; vacia se tapa la boca y al rellenarse se va destapando
-                    _heap.enabled = false;
+                    _heap.enabled = _over && _heap.sprite != null;
                     _name.enabled = _pot != null;
-                    if (_pot == null) { _cover.enabled = true; _cover.color = new Color(0.16f, 0.13f, 0.1f, 0.92f); return; }
-                    float cover = _pot.IsRefilling ? _pot.Refill / s.CookTime : _pot.Portions <= 0 ? 1f : 0f;
-                    _cover.enabled = cover > 0.01f;
-                    _cover.color = new Color(0.16f, 0.13f, 0.1f, 0.92f * cover);
+                    if (_pot == null) { ShowHoles(s); _cover.enabled = true; _cover.sprite = UiKit.CircleSprite; _cover.color = new Color(0.16f, 0.13f, 0.1f, 0.92f); return; }
+                    if (ShowHoles(s)) return;
+                    // (sin dibujos de huecos) Se va acabando poco a poco: en medio se abre un hueco oscuro que crece con cada porcion que sirves
+                    float left = (float)_pot.Portions / s.PotSize;
+                    float cover = _pot.IsRefilling ? _pot.Refill / s.CookTime : 1f - left;
+                    // (la sombra que crecia al servir no le gusto al usuario: solo se tapa ya vacia o rellenandose)
+                    if (!_pot.IsRefilling && _pot.Portions > 0) cover = 0f;
+                    float size = 1f, alpha = cover;
+                    if (_over) _heap.color = new Color(1f, 1f, 1f, 1f - cover);
+                    _cover.enabled = alpha > 0.01f;
+                    _cover.rectTransform.localScale = new Vector3(size, size, 1f);
+                    _cover.color = new Color(0.16f, 0.13f, 0.1f, 0.92f * alpha);
                     return;
                 }
                 if (L.FullPots != null)
@@ -591,20 +798,36 @@ namespace Tacos
                     // Garnachas: la cazuela entera dibujada (llena, vacia o tapada si no sale en la mision)
                     _cover.enabled = false;
                     _name.enabled = _pot != null;
-                    if (_pot == null) { _heap.sprite = TacosArt.Get("cazuela_tapada"); _heap.color = Color.white; _heap.enabled = _heap.sprite != null; return; }
+                    if (_pot == null) { _under.enabled = false; _heap.sprite = TacosArt.Get("cazuela_tapada"); _heap.color = Color.white; _heap.enabled = _heap.sprite != null; return; }
                     float fill = _pot.IsRefilling ? 1f - _pot.Refill / s.CookTime : 1f;
                     bool empty = _pot.Portions <= 0;
                     _heap.sprite = TacosArt.Get(empty && !_pot.IsRefilling ? "cazuela_vacia" : L.FullPots + MeatArt(Meat));
                     _heap.enabled = _heap.sprite != null;
-                    _heap.color = _pot.IsRefilling ? new Color(1f, 1f, 1f, 0.35f + 0.65f * fill) : Color.white;
+                    // se va acabando poco a poco: la cazuela llena se desvanece y deja ver la vacia de abajo
+                    float left = _pot.IsRefilling ? fill : (float)_pot.Portions / s.PotSize;
+                    _under.enabled = _under.sprite != null && !(empty && !_pot.IsRefilling);
+                    _heap.color = empty && !_pot.IsRefilling ? Color.white : new Color(1f, 1f, 1f, Mathf.Lerp(0.3f, 1f, Mathf.Sqrt(Mathf.Clamp01(left))));
                     float big = _k._bigPots ? 1.06f : 1f;
-                    _heap.rectTransform.localScale = new Vector3(big, big, 1f);
+                    _heap.rectTransform.localScale = _under.rectTransform.localScale = new Vector3(big, big, 1f);
                     return;
                 }
-                if (_pot == null) { _heap.enabled = false; _cover.enabled = L.BowlCover; return; }
-                float full = _pot.IsRefilling ? 1f - _pot.Refill / s.CookTime : (float)_pot.Portions / s.Rules.PotPortions;
+                if (_pot == null) { ShowHoles(s); _heap.enabled = false; _cover.enabled = L.BowlCover; return; }
+                float full = _pot.IsRefilling ? 1f - _pot.Refill / s.CookTime : (float)_pot.Portions / s.PotSize;
                 _heap.enabled = _heap.sprite != null && full > 0.01f;
-                _cover.enabled = L.BowlCover;
+                if (ShowHoles(s))
+                {
+                    float sc2 = Mathf.Lerp(0.45f, 1f, Mathf.Sqrt(Mathf.Clamp01(full))) * (_k._bigPots ? 1.22f : 1f);
+                    _heap.rectTransform.localScale = new Vector3(sc2, sc2, 1f);
+                    _heap.color = Color.white;
+                    return;
+                }
+                // En la taqueria los cazos del video siempre se ven llenos: el hueco oscuro de en medio crece al servir
+                float hole = _pot.IsRefilling ? _pot.Refill / s.CookTime : 1f - (float)_pot.Portions / s.PotSize;
+                if (!_pot.IsRefilling && _pot.Portions > 0) hole = 0f; // solo ya vacia (la sombra que crecia no gusto)
+                _cover.enabled = L.BowlCover || hole > 0.01f;
+                _cover.rectTransform.localScale = Vector3.one;
+                _cover.color = L.BowlCover && hole <= 0.01f ? new Color(0.22f, 0.12f, 0.07f, 0.96f)
+                             : new Color(0.16f, 0.1f, 0.07f, _pot.Portions <= 0 || _pot.IsRefilling ? 0.92f * Mathf.Max(hole, 0.3f) : Mathf.Lerp(0.55f, 0.9f, hole));
                 float sc = Mathf.Lerp(0.45f, 1f, Mathf.Sqrt(Mathf.Clamp01(full))) * (_k._bigPots ? 1.22f : 1f); // cazos grandes: copeteados
                 _heap.rectTransform.localScale = new Vector3(sc, sc, 1f);
                 _heap.color = _pot.IsRefilling ? new Color(1f, 0.6f, 0.6f, 0.85f) : Color.white;
@@ -680,7 +903,7 @@ namespace Tacos
         {
             readonly Image _ring, _plate, _tortilla, _meat, _lock;
             readonly Image[] _extras = new Image[5];
-            readonly Text _lockText;
+            readonly Text _lockText, _scoop;
             public readonly RectTransform Hot;
 
             public PlateView(KitchenScene k, int i)
@@ -698,6 +921,8 @@ namespace Tacos
                 for (int e = 0; e < _extras.Length; e++)
                     _extras[e] = st.Pic("PlatoExtra " + i + "." + e, null, R(c.x - 56 + e * 28, c.y + 14, 30, 30));
                 _lock = st.Img("Bloqueado " + i, UiKit.CircleSprite, new Color(0.05f, 0.04f, 0.08f, 0.72f), R(c.x, c.y, 160, 64));
+                _scoop = st.Label("¡Otro cucharón!", 20, UiKit.Maiz, R(c.x, c.y - L.PlateMeat.y * 0.62f - 14f, 220, 28));
+                _scoop.enabled = false;
                 _lockText = UiKit.Outlined(_lock.transform, "Mejora:\n3er plato", 16, UiKit.Muted);
                 UiKit.Stretch(_lockText.rectTransform);
                 Hot = st.Hotspot("TocarPlato " + i, R(c.x, c.y, 165, 70), () => k._do(Command.SelectPlate(i)));
@@ -711,9 +936,18 @@ namespace Tacos
                 _ring.enabled = !locked && selected;
                 _plate.enabled = !locked && _plate.sprite != null;
                 if (!locked && p.Tortilla) _tortilla.sprite = p.Base == Base.Tortilla ? TacosArt.Get("ing_tortilla") : TacosArt.Base(p.Base, true);
-                _tortilla.enabled = !locked && p.Tortilla && _tortilla.sprite != null;
+                // El pozole ya servido es el plato lleno: tapa al plato vacio
+                bool bowl = !locked && p.HasMeat && (p.Base == Base.PlatoChico || p.Base == Base.PlatoGrande);
+                _tortilla.enabled = !locked && p.Tortilla && _tortilla.sprite != null && !bowl;
                 var ms = !locked && p.HasMeat ? TacosArt.Meat(p.Meat) : null;
                 _meat.sprite = ms; _meat.enabled = ms != null;
+                // El chico se ve chico y el grande grande; con un solo cucharon el grande se ve a medias
+                float size = !locked && p.Base == Base.PlatoChico ? 0.78f : 1f;
+                _tortilla.rectTransform.localScale = _meat.rectTransform.localScale = new Vector3(size, size, 1f);
+                bool half = !locked && p.NeedsScoop;
+                _meat.color = half ? new Color(1f, 1f, 1f, 0.6f) : Color.white;
+                _scoop.enabled = half;
+                if (half) _scoop.rectTransform.localScale = Vector3.one * (1f + 0.08f * Mathf.Sin(Time.unscaledTime * 6f));
                 int k = 0;
                 if (!locked)
                     foreach (var e in Extras.All)
@@ -727,6 +961,8 @@ namespace Tacos
         {
             readonly KitchenScene _k;
             readonly Image _face, _bubble, _tail, _barBg, _bar, _tagBg, _ice;
+            public RectTransform Bubble => _bubble.rectTransform;
+            public bool BubbleShown => _bubble.enabled;
             readonly Outline _bubbleOutline;
             readonly Image[] _icons = new Image[7];
             readonly Image[] _iconBg = new Image[7]; // circulito de color: lo blanco (crema, queso) no se perdia en el globito
@@ -766,13 +1002,19 @@ namespace Tacos
                 _tagBg = st.Img("Especial " + i, UiKit.RoundedSpritePublic, UiKit.Maiz, R(_x, 100, 150, 30));
                 _tagBg.type = Image.Type.Sliced;
                 _tag = UiKit.FillLabel(_tagBg.transform, "", 18, UiKit.Ink, TextAnchor.MiddleCenter, 2f);
-                Hot = st.Hotspot("Entregar " + i, R(_x, 210, 290, 260), () => k._do(Command.Deliver(i)));
+                // Solo la cara (antes era un cuadro corrido a la derecha que se metia en la cara del de junto)
+                Hot = st.Hotspot("Entregar " + i, R(_x - 50f, CounterTop - 100f, 236, 230), () => k.TapCustomer(i));
+                // Tocar el globito tambien entrega (va al final para quedar encima de los dibujitos del pedido)
+                _bubbleHot = st.Hotspot("TocarGlobito " + i, R(_x, 150, 100, 90), () => k.TapCustomer(i));
             }
+
+            readonly RectTransform _bubbleHot;
 
             public void Refresh(Customer c, bool ready, bool frozen)
             {
                 bool on = c != null;
                 Hot.gameObject.SetActive(on);
+                _bubbleHot.gameObject.SetActive(on);
                 _face.enabled = on;
                 if (!on) _ice.enabled = false;
                 _bubble.enabled = _tail.enabled = _barBg.enabled = _bar.enabled = on;
@@ -803,7 +1045,9 @@ namespace Tacos
                 }
 
                 int n = 0;
-                if (c.Order.Base != Base.Tortilla && TacosArt.Base(c.Order.Base, true) != null) SetIcon(n++, TacosArt.Base(c.Order.Base, true)); // en las garnachas importa la masa
+                // en las garnachas importa la masa; en el pozole el tamaño; en los tamales hoja o bolillo (en la feria sale sola)
+                bool autoBase = _k._sim != null && _k._sim.Level.StallDef.AutoBase;
+                if (!autoBase && c.Order.Base != Base.Tortilla && TacosArt.Base(c.Order.Base, true) != null) SetIcon(n++, TacosArt.Base(c.Order.Base, true));
                 SetIcon(n++, TacosArt.Meat(c.Order.Meat));
                 foreach (var e in Extras.All) if (Extras.Has(c.Order.Extras, e) && n < _icons.Length) SetIcon(n++, TacosArt.Extra(e));
                 for (int k = n; k < _icons.Length; k++) _icons[k].enabled = false;
@@ -811,16 +1055,20 @@ namespace Tacos
                 // Globito a la derecha de la cabeza: maximo 3 cosas por renglon (los pedidos largos usan 2 renglones
                 // en vez de crecer de lado y taparle la cara al siguiente cliente)
                 int cols = Mathf.Min(n, 3), rows = n > 3 ? 2 : 1;
-                const float Step = 50f, Pad = 9f, Top = 98f;
+                const float Step = 44f, Pad = 7f, Top = 98f; // globito compacto: tapa menos al de junto
                 float bw = cols * Step + 2 * Pad, bh = rows * Step + 2 * Pad;
-                float left = _x + 12f, bx = left + bw / 2f;
+                float left = _x + 4f, bx = left + bw / 2f;
                 st.Place(_bubble.rectTransform, new Rect(left, Top, bw, bh));
+                st.Place(_bubbleHot, new Rect(left, Top, bw, bh));
                 for (int k = 0; k < n; k++)
                 {
                     float ix = left + Pad + Step / 2f + (k % 3) * Step, iy = Top + Pad + Step / 2f + (k / 3) * Step;
-                    st.Place(_iconBg[k].rectTransform, R(ix, iy, 48, 48));
-                    st.Place(_icons[k].rectTransform, R(ix, iy, 44, 44));
+                    st.Place(_iconBg[k].rectTransform, R(ix, iy, 42, 42));
+                    st.Place(_icons[k].rectTransform, R(ix, iy, 39, 39));
+                    _icons[k].rectTransform.localScale = Vector3.one;
                 }
+                // Plato chico de pozole: el dibujito chico, para que se distinga del grande
+                if (!autoBase && c.Order.Base == Base.PlatoChico && n > 0) _icons[0].rectTransform.localScale = new Vector3(0.7f, 0.7f, 1f);
                 st.Place(_tail.rectTransform, R(left + 6f, Top + bh - 8f, 22, 22));
                 _bubbleOutline.effectColor = ready ? UiKit.Limon : frozen ? new Color(0.55f, 0.85f, 1f) : new Color(0.16f, 0.12f, 0.2f, 1f);
 
@@ -867,7 +1115,7 @@ namespace Tacos
                 case Extra.Queso: return "Queso";
                 case Extra.Lechuga: return "Lechuga";
                 case Extra.Mayonesa: return "Mayonesa";
-                case Extra.ChilePolvo: return "Chile";
+                case Extra.ChilePolvo: return L.Stall == Stall.Pozole ? "Piquín" : "Chile";
                 case Extra.Picante: return "Picante";
                 case Extra.SalsaVerde: return "Salsa verde";
                 case Extra.SalsaRoja: return "Salsa roja";
@@ -875,6 +1123,11 @@ namespace Tacos
                 case Extra.Cilantro: return "Cilantro";
                 case Extra.Pina: return "Piña";
                 case Extra.Limon: return "Limón";
+                case Extra.Rabano: return "Rábano";
+                case Extra.Oregano: return "Orégano";
+                case Extra.Champurrado: return "Champurrado";
+                case Extra.AtoleArroz: return "Atole de arroz";
+                case Extra.AtoleFresa: return "Atole de fresa";
                 default: return "";
             }
         }
@@ -894,6 +1147,13 @@ namespace Tacos
                 case Meat.Elote: return "Elotes";
                 case Meat.Esquite: return "Esquites";
                 case Meat.EloteAsado: return "Asados";
+                case Meat.PozoleRojo: return "Pozole rojo";
+                case Meat.PozoleBlanco: return "Pozole blanco";
+                case Meat.PozoleVerde: return "Pozole verde";
+                case Meat.TamalVerde: return "Verdes";
+                case Meat.TamalRojo: return "Rojos";
+                case Meat.TamalRajas: return "Rajas";
+                case Meat.TamalDulce: return "Dulces";
                 default: return "";
             }
         }

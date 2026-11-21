@@ -30,7 +30,13 @@ namespace Tacos
         public bool PaintedFull;             // las ollas ya vienen llenas en el dibujo (y en el video): solo se tapan al vaciarse
         public string FullPots;              // prefijo del dibujo de la cazuela completa ("cazuela_" + guisado), null = monton encima
         public bool ExtraLabels;             // nombre abajo de cada cazuelita de extras
-        public Extra LabelUp;                // estos llevan el nombre arriba (si abajo hay otra cosa)               // la cazuela del dibujo ya trae comida: se tapa cuando se vacia
+        public Extra LabelUp;                // estos llevan el nombre arriba (si abajo hay otra cosa)
+        public Vector2[] NameAt, BadgeAt;    // donde va el nombre y el numero de cada olla (null = abajo y a la derecha)
+        public Meat[] PaintOver;
+        public string Front;
+        public string[] Levels;              // por olla: "nivel_<x>_medio/_bajo" (el caldo baja y se ve la pared de adentro); null = sin niveles
+        public Rect[] LevelRects;            // donde va cada dibujo de nivel (centro y tamano, pixeles de la imagen)
+        public float BowlHotH;               // alto del lugar para tomar de cada olla (0 = el normal); baja hacia el cuerpo de la olla                 // pedazos del dibujo que van ENFRENTE de los clientes (cucharones, vasos); ver art-source/frente.py             // con PaintedFull: estas ollas se dibujan encima (el dibujo trae otra cosa en esa olla)
 
         public (Base Base, Rect Area, string Art)[] Stacks; // de donde se toman las bases (Art null = ya viene en el dibujo)
         public Rect RawTray;                 // charola de carne cruda (ancho 0 = no hay)
@@ -139,6 +145,9 @@ namespace Tacos
             PlateSpots = new[] { new Vector2(1088, 478), new Vector2(1088, 568), new Vector2(1088, 658) }, PlateArt = "plato",
             PlateMeat = new Vector2(170, 96),
             CounterTop = 386f, // la orilla del cazo y del anafre: la gente se para detras
+            Front = "frente_elotes", // la orilla de la olla grande va enfrente de la primera persona (los lugares quedan como siempre)
+            Levels = new[] { null, "elotes_1", null }, // el esquite baja; los elotes enteros y los asados todavia no
+            LevelRects = new[] { default(Rect), R(500, 462, 312, 136), default(Rect) },
             LabelUp = Extra.Queso, // su nombre arriba de la charola (abajo estan los limones)
             TrashArea = R(1430, 800, 200, 140), TrashArt = false,
             Extras = new Dictionary<Extra, Vector2>
@@ -152,6 +161,104 @@ namespace Tacos
             Embers = R(812, 548, 300, 70)
         };
 
-        public static StallLayout For(Stall s) => s == Stall.Garnachas ? Garnachas : s == Stall.Elotes ? Elotes : Taqueria;
+        static readonly Vector2 Off = new Vector2(-400, -400); // fuera de la pantalla: estos puestos no tienen comal
+        static Vector2[] Offs(int n) { var a = new Vector2[n]; for (int i = 0; i < n; i++) a[i] = Off; return a; }
+
+        /// <summary>
+        /// Mundo 4: la pozoleria (ia/puestos/cocina_pozole.png). Las 3 ollas de barro ya pintadas llenas, las pilas de platos
+        /// en la repisa de atras (el grande a la izquierda), la tabla con 3 huecos y las 6 cazuelitas de lo de encima.
+        /// </summary>
+        public static readonly StallLayout Pozole = new StallLayout
+        {
+            Stall = Stall.Pozole, Background = "barra_pozole", CropBottom = 100f,
+            Bowls = new[] { new Vector2(125, 505), new Vector2(420, 505), new Vector2(725, 510) },
+            BowlMeat = new[] { Meat.PozoleRojo, Meat.PozoleBlanco, Meat.PozoleVerde },
+            HeapSizes = new[] { new Vector2(235, 80), new Vector2(235, 78), new Vector2(235, 78) }, PaintedFull = true,
+            Stacks = new[] { (Base.PlatoGrande, R(180, 340, 190, 120), (string)null), (Base.PlatoChico, R(333, 345, 150, 110), (string)null) },
+            Comal2 = Offs(2), Comal4 = Offs(4), ComalDrop = R(-400, -400, 10, 10), HotLabel = Off, FxDome = Off,
+            BaseKeepsAspect = true, PlateBase = new Vector2(150, 108), PlateMeat = new Vector2(150, 112),
+            PlateSpots = new[] { new Vector2(997, 478), new Vector2(997, 560), new Vector2(1008, 655) },
+            // Separados como en la taqueria (si se juntan, los globitos tapan al de al lado). La canasta de tostadas
+            // de la repisa va enfrente de la primera persona.
+            CustomerX = new float[] { 720, 990, 1260 }, Front = "frente_pozole",
+            CounterTop = 352f,
+            TrashArea = R(1430, 800, 210, 150), TrashArt = false,
+            Extras = new Dictionary<Extra, Vector2>
+            {
+                { Extra.Lechuga, new Vector2(1157, 440) }, { Extra.Rabano, new Vector2(1338, 445) }, { Extra.Cebolla, new Vector2(1194, 522) },
+                { Extra.Oregano, new Vector2(1355, 525) }, { Extra.ChilePolvo, new Vector2(1210, 618) }, { Extra.Limon, new Vector2(1366, 618) }
+            },
+            ExtraLabels = true, LabelUp = Extra.Lechuga | Extra.Rabano,
+            // El pozole se va acabando de verdad: baja el caldo (art-source/niveles.py)
+            Levels = new[] { "pozole_0", "pozole_1", "pozole_2" },
+            LevelRects = new[] { R(118, 509, 254, 90), R(422, 510, 258, 88), R(728, 510, 256, 90) },
+            AmbientSteam = new[] { (new Vector2(125, 470), 200f, 0), (new Vector2(420, 470), 200f, 1), (new Vector2(725, 475), 200f, 2) },
+            Embers = R(440, 690, 860, 40)
+        };
+
+        /// <summary>
+        /// Mundo 5: la tamaleria (ia/puestos/cocina_tamales.png). La vaporera con sus 4 tamales, las 3 ollas de atole,
+        /// la canasta de bolillos, la pila de hojas, la crema y el queso, y la tabla con 3 huecos.
+        /// </summary>
+        public static readonly StallLayout Tamales = new StallLayout
+        {
+            Stall = Stall.Tamales, Background = "barra_tamales", CropBottom = 100f,
+            Bowls = new[] { new Vector2(150, 360), new Vector2(365, 365), new Vector2(140, 462), new Vector2(362, 452) },
+            BowlMeat = new[] { Meat.TamalVerde, Meat.TamalRojo, Meat.TamalRajas, Meat.TamalDulce },
+            HeapSizes = new[] { new Vector2(210, 90), new Vector2(200, 90), new Vector2(210, 90), new Vector2(200, 88) }, PaintedFull = true,
+            NameAt = new[] { new Vector2(150, 318), new Vector2(365, 318), new Vector2(140, 512), new Vector2(362, 506) },
+            BadgeAt = new[] { new Vector2(48, 338), new Vector2(478, 345), new Vector2(40, 452), new Vector2(478, 440) },
+            Stacks = new[] { (Base.Guajolota, R(598, 555, 300, 200), (string)null), (Base.Hoja, R(836, 635, 120, 96), "pila_hojas") },
+            Comal2 = Offs(2), Comal4 = Offs(4), ComalDrop = R(-400, -400, 10, 10), HotLabel = Off, FxDome = Off,
+            BaseKeepsAspect = true, PlateBase = new Vector2(132, 92), PlateMeat = new Vector2(140, 100),
+            PlateSpots = new[] { new Vector2(1005, 505), new Vector2(1020, 588), new Vector2(1037, 672) },
+            CounterTop = 298f,
+            CustomerX = new float[] { 500, 790, 1080 }, // separados como en la taqueria
+            Front = "frente_tamales",                   // la orilla de la vaporera, los cucharones del atole y los vasos van enfrente de la gente
+            TrashArea = R(1450, 770, 180, 190), TrashArt = false,
+            Extras = new Dictionary<Extra, Vector2>
+            {
+                { Extra.Champurrado, new Vector2(715, 345) }, { Extra.AtoleArroz, new Vector2(920, 348) }, { Extra.AtoleFresa, new Vector2(1115, 352) },
+                { Extra.Crema, new Vector2(1236, 580) }, { Extra.Queso, new Vector2(1240, 680) }
+            },
+            ExtraLabels = true, LabelUp = Extra.Crema,
+            // la crema y el queso no venian en el dibujo: sus cazuelitas van encima
+            Garnish = new[] { ("cazuelita_crema", 1236f, 580f, 112f, 104f), ("cazuelita_queso", 1240f, 680f, 116f, 92f) },
+            AmbientSteam = new[] { (new Vector2(250, 320), 300f, -1), (new Vector2(715, 310), 120f, -1), (new Vector2(920, 315), 120f, -1), (new Vector2(1115, 318), 120f, -1) }
+        };
+
+        /// <summary>
+        /// Mundo 6: la feria (ia/puestos/barra_feria_v2.png, pintada otra vez el 20 de noviembre con el estilo de los demas).
+        /// Trompo de pastor, olla de elotes, olla de tamales, pozole blanco y champurrado en las de barro, 8 cazuelitas y la tabla.
+        /// </summary>
+        public static readonly StallLayout Feria = new StallLayout
+        {
+            Stall = Stall.Feria, Background = "barra_feria", CropBottom = 90f,
+            Trompo = true, TrompoArea = R(85, 300, 170, 400), TrompoBadge = new Vector2(172, 150),
+            Bowls = new[] { new Vector2(330, 330), new Vector2(672, 325), new Vector2(1008, 350) },
+            BowlMeat = new[] { Meat.Elote, Meat.TamalVerde, Meat.PozoleBlanco },
+            HeapSizes = new[] { new Vector2(300, 80), new Vector2(310, 90), new Vector2(250, 52) }, PaintedFull = true,
+            BowlHotH = 190f,
+            Stacks = new (Base, Rect, string)[0],
+            Comal2 = Offs(2), Comal4 = Offs(4), ComalDrop = R(-400, -400, 10, 10), HotLabel = Off, FxDome = Off,
+            BaseKeepsAspect = true, PlateBase = new Vector2(150, 100), PlateMeat = new Vector2(175, 112),
+            PlateSpots = new[] { new Vector2(405, 715), new Vector2(745, 715), new Vector2(1088, 715) },
+            CounterTop = 320f, Front = "frente_feria", // lo de arriba de las ollas va enfrente de la gente
+            Levels = new[] { null, null, "feria_2" }, // el pozole baja; elotes y tamales todavia no
+            LevelRects = new[] { default(Rect), default(Rect), R(1013, 361, 256, 78) },
+            TrashArea = R(1455, 775, 170, 180), TrashArt = false,
+            Extras = new Dictionary<Extra, Vector2>
+            {
+                { Extra.Cebolla, new Vector2(220, 568) }, { Extra.Cilantro, new Vector2(390, 568) }, { Extra.SalsaRoja, new Vector2(562, 568) },
+                { Extra.SalsaVerde, new Vector2(735, 568) }, { Extra.Picante, new Vector2(905, 568) }, { Extra.Mayonesa, new Vector2(1077, 568) },
+                { Extra.Queso, new Vector2(1248, 568) }, { Extra.ChilePolvo, new Vector2(1412, 568) }, { Extra.Champurrado, new Vector2(1330, 400) }
+            },
+            ExtraLabels = true, LabelUp = Extra.None,
+            AmbientSteam = new[] { (new Vector2(330, 300), 260f, 0), (new Vector2(672, 290), 260f, 1), (new Vector2(1008, 325), 200f, 2), (new Vector2(1330, 325), 200f, -1) }
+        };
+
+        static readonly StallLayout[] ByStall = { Taqueria, Garnachas, Elotes, Pozole, Tamales, Feria };
+
+        public static StallLayout For(Stall s) => ByStall[(int)s];
     }
 }

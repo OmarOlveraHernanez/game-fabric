@@ -18,6 +18,12 @@ os.makedirs(OUT, exist_ok=True)
 
 def chroma_alpha(rgb, mode):
     r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    if mode == 'gray':
+        # fondo gris claro parejo (algunas hojas de Figma salen asi aunque se pida magenta): distancia al color de las esquinas
+        h, w = rgb.shape[:2]
+        bgc = np.median(np.concatenate([rgb[:8, :8].reshape(-1, 3), rgb[:8, -8:].reshape(-1, 3), rgb[-8:, :8].reshape(-1, 3), rgb[-8:, -8:].reshape(-1, 3)]), axis=0)
+        dist = np.abs(rgb - bgc).max(axis=2)
+        return np.clip((14 - dist) / 10, 0, 1)
     if mode == 'green':
         d = g - np.maximum(r, b)
     else:  # magenta
@@ -261,3 +267,24 @@ cells('elotes_asados.png', 'magenta', 3, 1, ['ing_asado', None, None], 300, 300)
 # Cocineros de cada puesto (fila = cocinero; columnas = quieto, cocinando, festeja)
 for hoja, ids in [('cocineros_garnachas.png', ['mago', 'chata', 'beto']), ('cocineros_elotes.png', ['cheto', 'yesi', 'chuy'])]:
     cells(hoja, 'magenta', 3, 3, [f'{i}_{p}' for i in ids for p in ['quieto', 'cocinando', 'festeja']], 380, 560)
+
+# ---- Mundos 4, 5 y 6: Pozoleria, Tamales y La Feria ----
+# Los fondos de los puestos son los de ia/puestos/cocina_*.png (ya traen las ollas llenas)
+for nm in ['pozole', 'tamales', 'feria']:
+    # la feria se volvio a pintar (20 nov.): la maqueta no iba con el estilo de los demas puestos
+    fondo = 'barra_feria_v2.png' if nm == 'feria' else 'cocina_' + nm + '.png'
+    Image.open(os.path.join(SRC, 'puestos', fondo)).convert('RGB').save(os.path.join(OUT, 'barra_' + nm + '.jpg'), quality=88)
+    Image.open(os.path.join(SRC, 'mapa_' + nm + '.png')).convert('RGB').save(os.path.join(OUT, 'mapa_' + nm + '.jpg'), quality=88)
+sheet('pozole_hoja.png', 'gray', 4, 3, ['ing_pozole_rojo', 'ing_pozole_blanco', 'ing_pozole_verde', 'base_plato_chico',
+      'base_plato_grande', 'ing_rabano', 'ing_oregano', 'pw_tostadas', 'pw_jamaica', 'pw_piquin', 'pw_olla_pozole', None], 300, 300)
+cells('tamales_hoja.png', 'gray', 4, 3, ['ing_tamal_verde', 'ing_tamal_rojo', 'ing_tamal_rajas', 'ing_tamal_dulce',
+      'base_hoja', 'base_bolillo', 'ing_champurrado', 'ing_atole_arroz', 'ing_atole_fresa', 'pila_hojas', 'cazuelita_crema', 'cazuelita_queso'], 300, 300)
+cells('powerups_tamales_feria.png', 'magenta', 4, 3, ['pw_tamal', 'pw_cafe', 'pw_rosca', 'pw_vaporera', 'pw_algodon', 'pw_rueda', 'pw_loteria', 'pw_cohetes',
+      'olla_tamales', None, None, None], 300, 300)
+cells('mejoras_456.png', 'magenta', 4, 3, ['mej_rocola', 'mej_fogon', 'mej_mesa', 'mej_olla_pozolera', 'mej_atolito', 'mej_vaporera', 'mej_canasta', 'mej_tamalera',
+      'mej_banda', 'mej_fogones', 'mej_puesto', 'mej_ollas_feria'], 360, 300)
+cells('jefes_456.png', 'magenta', 3, 3, [f'jefe_{w}_{m}' for w in ['pozole', 'tamales', 'feria'] for m in ['contento', 'espera', 'enojado']], 340, 340)
+for hoja, ids in [('cocineros_pozole.png', ['goyo', 'rosa', 'nacho']), ('cocineros_tamales.png', ['fili', 'lencha', 'tono'])]:
+    cells(hoja, 'magenta', 3, 3, [f'{i}_{p}' for i in ids for p in ['quieto', 'cocinando', 'festeja']], 380, 560)
+# Botones de mision de la calle (20 nov.): azulejo de talavera abierto, con papel picado si ya tiene estrellas, y de piedra si esta cerrado
+cells('ui_misiones.png', 'magenta', 3, 1, ['ui_mision', 'ui_mision_hecha', 'ui_mision_cerrada'], 300, 300)

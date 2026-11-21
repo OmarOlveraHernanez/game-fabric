@@ -59,6 +59,15 @@ namespace Tacos.Logic
             for (int p = 0; p < s.Plates.Length; p++) if (s.Plates[p].IsHeadingTo(order)) { heading = p; break; }
             if (heading >= 0)
             {
+                if (s.Plates[heading].NeedsScoop)
+                {
+                    // plato grande de pozole: falta el segundo cucharon
+                    var hp = s.Pot(order.Meat);
+                    if (hp != null && hp.Portions <= 0 && !hp.IsRefilling)
+                        return new Hint(HintKind.RefillMeat, target, Command.RefillMeat(order.Meat), meat: order.Meat);
+                    if (hp == null || hp.IsRefilling) return new Hint(HintKind.WaitMeat, target, meat: order.Meat);
+                    return new Hint(HintKind.ServeMeat, target, Command.ServeMeat(order.Meat), meat: order.Meat);
+                }
                 if (s.SelectedPlate != heading)
                     return new Hint(HintKind.SelectPlate, target, Command.SelectPlate(heading), plate: heading);
                 foreach (var e in Extras.All)
@@ -88,6 +97,8 @@ namespace Tacos.Logic
             // 5. La base (solo en turnos con comal): la que pidio el cliente
             bool plateWithBase = false;
             foreach (var pl in s.Plates) if (pl.Base == order.Base && !pl.HasMeat) plateWithBase = true;
+            if (s.Level.NeedsTortilla && !plateWithBase && s.Level.StallDef.InstantBase)
+                return new Hint(HintKind.AddTortilla, target, Command.AddTortilla(order.Base)); // directo de la pila al plato
             if (s.Level.NeedsTortilla && !plateWithBase)
             {
                 int raw = -1;

@@ -26,15 +26,47 @@ namespace Tacos.Logic
         public bool AutoBase;           // la base sale de lo principal (elote en palito, esquite en vaso); no hay comal
         public Extra First;             // extra que va antes que los demas (la mayonesa en los elotes)
         public Extra NeedsFirst;        // los que solo se pegan si ya tiene First (queso y chile en polvo)
+        public bool InstantBase;        // la base (plato, hoja, bolillo) se toma de su pila y va directo al plato: no hay comal
+        public float PotTimeScale = 1f; // la olla tarda esto por el tiempo normal en rellenarse (la vaporera de tamales tarda mas)
+        public int ExtraPortions;       // porciones de mas en cada olla (la vaporera rinde mas)
+        public StallDef[] Parts;        // puesto mixto (la feria): cada familia de lo principal trae sus propios extras y reglas
 
-        /// <summary>En los elotes cada cosa tiene su base: el elote y el asado en palito, el esquite en vaso.</summary>
-        public Base BaseFor(Meat m) => m == Meat.Elote || m == Meat.EloteAsado ? Base.Palito : m == Meat.Esquite ? Base.Vaso : Bases[0];
+        /// <summary>Hay comal donde se calienta la base (taqueria y garnachas).</summary>
+        public bool HasComal => !AutoBase && !InstantBase;
+
+        /// <summary>Cuando la base sale de lo principal: elote y asado en palito, esquite en vaso, y en la feria cada cosa en lo suyo.</summary>
+        public Base BaseFor(Meat m)
+        {
+            switch (m)
+            {
+                case Meat.Elote: case Meat.EloteAsado: return Base.Palito;
+                case Meat.Esquite: return Base.Vaso;
+                case Meat.Pastor: case Meat.Asada: case Meat.Chorizo: case Meat.Suadero: return Base.Tortilla;
+                case Meat.PozoleRojo: case Meat.PozoleBlanco: case Meat.PozoleVerde: return Base.PlatoChico;
+                case Meat.TamalVerde: case Meat.TamalRojo: case Meat.TamalRajas: case Meat.TamalDulce: return Base.Hoja;
+                default: return Bases[0];
+            }
+        }
+
+        /// <summary>Las reglas de extras que tocan a ese principal (en un puesto mixto, las de su familia).</summary>
+        public StallDef PartFor(Meat m)
+        {
+            if (Parts == null) return this;
+            foreach (var p in Parts) if (Array.IndexOf(p.Mains, m) >= 0) return p;
+            return Parts[0];
+        }
 
         /// <summary>Todos los extras del puesto en el orden en que se muestran.</summary>
         public Extra[] AllExtras
         {
             get
             {
+                if (Parts != null)
+                {
+                    var mask = Extra.None;
+                    foreach (var p in Parts) foreach (var e in p.AllExtras) mask |= e;
+                    return Array.FindAll(Extras.All, e => (mask & e) != 0);
+                }
                 var l = new List<Extra>(Common);
                 if (Special != Extra.None) l.Add(Special);
                 l.AddRange(OneOf);
@@ -78,6 +110,68 @@ namespace Tacos.Logic
             AutoBase = true, First = Extra.Mayonesa, NeedsFirst = Extra.Queso | Extra.ChilePolvo
         };
 
-        public static StallDef Get(Stall s) => s == Stall.Garnachas ? Garnachas : s == Stall.Elotes ? Elotes : Taqueria;
+        // (va antes de los puestos que la usan: los campos estaticos se inicializan en orden)
+        static readonly Extra[] Atoles = { Extra.Champurrado, Extra.AtoleArroz, Extra.AtoleFresa };
+
+        /// <summary>Mundo 4: lo nuevo es EL TAMAÑO. El plato grande lleva 2 cucharones. Los platos se toman de su pila (no hay comal).</summary>
+        public static readonly StallDef Pozole = new StallDef
+        {
+            Id = Stall.Pozole, Name = "Pozolería",
+            Bases = new[] { Base.PlatoChico, Base.PlatoGrande },
+            Mains = new[] { Meat.PozoleRojo, Meat.PozoleBlanco, Meat.PozoleVerde },
+            Common = new[] { Extra.Lechuga, Extra.Rabano, Extra.Cebolla, Extra.Oregano, Extra.ChilePolvo, Extra.Limon },
+            OneOf = new Extra[0],
+            InstantBase = true
+        };
+
+        /// <summary>
+        /// Mundo 5: lo nuevo es EL COMBO (tamal con su atole) y la vaporera, que rinde mas pero tarda en cocer:
+        /// hay que rellenar antes de que se acabe. El tamal dulce no lleva crema ni queso.
+        /// </summary>
+        public static readonly StallDef Tamales = new StallDef
+        {
+            Id = Stall.Tamales, Name = "Tamales",
+            Bases = new[] { Base.Hoja, Base.Guajolota },
+            Mains = new[] { Meat.TamalVerde, Meat.TamalRojo, Meat.TamalRajas, Meat.TamalDulce },
+            Common = new[] { Extra.Crema, Extra.Queso },
+            OneOf = Atoles,
+            InstantBase = true, PotTimeScale = 1.6f, ExtraPortions = 3,
+            Parts = new[]
+            {
+                new StallDef { Id = Stall.Tamales, Name = "Salados", Bases = new[] { Base.Hoja }, Mains = new[] { Meat.TamalVerde, Meat.TamalRojo, Meat.TamalRajas },
+                               Common = new[] { Extra.Crema, Extra.Queso }, OneOf = Atoles },
+                new StallDef { Id = Stall.Tamales, Name = "Dulce", Bases = new[] { Base.Hoja }, Mains = new[] { Meat.TamalDulce },
+                               Common = new Extra[0], OneOf = Atoles }
+            }
+        };
+
+        /// <summary>
+        /// Mundo 6: TODO JUNTO. Un antojo de cada puesto, cada uno con sus propias reglas
+        /// (las salsas solo al taco, mayonesa primero en el elote, el champurrado con el tamal). La base sale sola.
+        /// </summary>
+        public static readonly StallDef Feria = new StallDef
+        {
+            Id = Stall.Feria, Name = "La Feria",
+            Bases = new[] { Base.Tortilla, Base.Palito, Base.PlatoChico, Base.Hoja },
+            Mains = new[] { Meat.Pastor, Meat.Elote, Meat.PozoleBlanco, Meat.TamalVerde },
+            Common = new Extra[0], OneOf = new Extra[0],
+            AutoBase = true,
+            Parts = new[]
+            {
+                new StallDef { Id = Stall.Feria, Name = "Taco", Bases = new[] { Base.Tortilla }, Mains = new[] { Meat.Pastor },
+                               Common = new[] { Extra.Cebolla, Extra.Cilantro }, OneOf = new[] { Extra.SalsaVerde, Extra.SalsaRoja } },
+                new StallDef { Id = Stall.Feria, Name = "Elote", Bases = new[] { Base.Palito }, Mains = new[] { Meat.Elote },
+                               Common = new[] { Extra.Mayonesa, Extra.Queso, Extra.ChilePolvo, Extra.Picante }, OneOf = new Extra[0],
+                               First = Extra.Mayonesa, NeedsFirst = Extra.Queso | Extra.ChilePolvo },
+                new StallDef { Id = Stall.Feria, Name = "Pozole", Bases = new[] { Base.PlatoChico }, Mains = new[] { Meat.PozoleBlanco },
+                               Common = new[] { Extra.Cebolla, Extra.ChilePolvo, Extra.Picante }, OneOf = new Extra[0] },
+                new StallDef { Id = Stall.Feria, Name = "Tamal", Bases = new[] { Base.Hoja }, Mains = new[] { Meat.TamalVerde },
+                               Common = new[] { Extra.Queso }, OneOf = new[] { Extra.Champurrado } }
+            }
+        };
+
+        public static readonly StallDef[] AllStalls = { Taqueria, Garnachas, Elotes, Pozole, Tamales, Feria };
+
+        public static StallDef Get(Stall s) => AllStalls[(int)s];
     }
 }

@@ -25,9 +25,9 @@ namespace Tacos
             new ZoneDef { Name = "Mundo 1 · Taquería", Island = "isla_callejero", Stars = 0, Chiles = 1, Ready = true },
             new ZoneDef { Name = "Mundo 2 · Garnachas", Island = "isla_garnachas", Stars = 24, Chiles = 2, Ready = true },
             new ZoneDef { Name = "Mundo 3 · Elotes", Island = "isla_elotes", Stars = 50, Chiles = 3, Ready = true },
-            new ZoneDef { Name = "Mundo 4 · Pozolería", Island = "isla_pozole", Stars = 76, Chiles = 3 },
-            new ZoneDef { Name = "Mundo 5 · Tamales", Island = "isla_tamales", Stars = 100, Chiles = 4 },
-            new ZoneDef { Name = "Mundo 6 · La Feria", Island = "isla_feria", Stars = 125, Chiles = 5 },
+            new ZoneDef { Name = "Mundo 4 · Pozolería", Island = "isla_pozole", Stars = 76, Chiles = 3, Ready = true },
+            new ZoneDef { Name = "Mundo 5 · Tamales", Island = "isla_tamales", Stars = 100, Chiles = 4, Ready = true },
+            new ZoneDef { Name = "Mundo 6 · La Feria", Island = "isla_feria", Stars = 125, Chiles = 5, Ready = true },
         };
         const float ZoneGap = 900f;
         RectTransform _strip;
@@ -35,12 +35,16 @@ namespace Tacos
         float _worldScroll;
         int _worldIndex;
         readonly List<Image> _islands = new List<Image>(), _locks = new List<Image>(), _dots = new List<Image>();
+        // Puentes entre islas: se mecen con las islas; los que llevan a un mundo cerrado se ven en sombra
+        readonly List<Image> _bridges = new List<Image>();
+        readonly List<Image[]> _bridgeLights = new List<Image[]>();
+        readonly List<bool> _bridgeOpen = new List<bool>();
         readonly List<Text> _zoneInfo = new List<Text>();
         Text _tapToEnter;
 
         // calle de misiones
         // Cada mundo tiene su calle de misiones: dibujo de fondo y donde va cada una de las 12 (pixeles de ese dibujo)
-        static readonly string[] StreetArt = { "mapa_zona1", "mapa_garnachas", "mapa_elotes" };
+        static readonly string[] StreetArt = { "mapa_zona1", "mapa_garnachas", "mapa_elotes", "mapa_pozole", "mapa_tamales", "mapa_feria" };
         static readonly Vector2[][] WorldSpots =
         {
             new[]
@@ -59,6 +63,24 @@ namespace Tacos
             {
                 new Vector2(75, 800), new Vector2(174, 756), new Vector2(272, 712), new Vector2(478, 642), new Vector2(579, 603), new Vector2(680, 565),
                 new Vector2(869, 483), new Vector2(958, 443), new Vector2(1048, 403), new Vector2(1222, 330), new Vector2(1115, 258), new Vector2(1294, 195)
+            },
+            // Mercado de la pozoleria: las 10 plataformas del empedrado y 2 lugares mas (entre la 3 y la 4, y al final)
+            new[]
+            {
+                new Vector2(190, 785), new Vector2(312, 708), new Vector2(462, 640), new Vector2(540, 600), new Vector2(612, 560), new Vector2(772, 497),
+                new Vector2(925, 420), new Vector2(1017, 325), new Vector2(1130, 257), new Vector2(1240, 197), new Vector2(1360, 122), new Vector2(1440, 72)
+            },
+            // Esquina de los tamales al amanecer: 11 plataformas de la banqueta y una entre la 2 y la 3
+            new[]
+            {
+                new Vector2(222, 750), new Vector2(337, 690), new Vector2(420, 660), new Vector2(490, 630), new Vector2(605, 553), new Vector2(737, 490),
+                new Vector2(873, 428), new Vector2(1012, 360), new Vector2(1153, 307), new Vector2(1238, 240), new Vector2(1282, 148), new Vector2(1370, 82)
+            },
+            // La feria de noche: 11 plataformas del camino y una entre la 4 y la 5
+            new[]
+            {
+                new Vector2(155, 805), new Vector2(355, 725), new Vector2(320, 605), new Vector2(508, 545), new Vector2(590, 505), new Vector2(670, 470),
+                new Vector2(830, 410), new Vector2(990, 345), new Vector2(1165, 288), new Vector2(1275, 215), new Vector2(1385, 145), new Vector2(1448, 88)
             }
         };
         Vector2[] MissionSpots => WorldSpots[Mathf.Min(_playWorld, WorldSpots.Length - 1)];
@@ -100,6 +122,17 @@ namespace Tacos
                 var bridge = UiKit.Picture(_strip, "Puente " + i, TacosArt.Get("puente"));
                 bridge.preserveAspect = false;
                 Corner(bridge.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(i * ZoneGap + ZoneGap / 2f, 10f), new Vector2(ZoneGap - 380f, 150f));
+                _bridges.Add(bridge);
+                _bridgeOpen.Add(true);
+                // lucecitas que cruzan el puente abierto (como gente que va de un puesto al otro)
+                var lights = new Image[3];
+                for (int l = 0; l < lights.Length; l++)
+                {
+                    lights[l] = UiKit.Picture(_strip, "Luz puente " + i + "." + l, UiKit.GlowSprite);
+                    lights[l].raycastTarget = false;
+                    Corner(lights[l].rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(46f, 46f));
+                }
+                _bridgeLights.Add(lights);
             }
             for (int i = 0; i < Zones.Length; i++)
             {
@@ -119,6 +152,11 @@ namespace Tacos
                 // Letrero colgante debajo de la isla
                 var sign = UiKit.Picture(_strip, "Letrero " + i, TacosArt.Get("ui_letrero"));
                 sign.preserveAspect = false;
+                // Tambien se entra tocando el letrero (los jugadores lo intentaban)
+                sign.raycastTarget = true;
+                var signBtn = sign.gameObject.AddComponent<Button>();
+                signBtn.transition = Selectable.Transition.None;
+                signBtn.onClick.AddListener(() => { UiKit.Clicked?.Invoke(); TapZone(z); });
                 Corner(sign.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(i * ZoneGap, -330f), new Vector2(470f, 200f));
                 var name = UiKit.Outlined(sign.transform, def.Name, 26, new Color32(0xFF, 0xF0, 0xD2, 0xFF));
                 Corner(name.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -2f), new Vector2(440f, 40f));
@@ -132,7 +170,7 @@ namespace Tacos
                 Corner(info.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -76f), new Vector2(440f, 30f));
                 _zoneInfo.Add(info);
             }
-            _tapToEnter = UiKit.Outlined(_strip, "Toca el puesto para entrar", 24, UiKit.Turq);
+            _tapToEnter = UiKit.Outlined(_strip, "Toca el puesto o su letrero para entrar", 24, UiKit.Turq);
             Corner(_tapToEnter.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -200f), new Vector2(460f, 36f));
 
             // Flechas y puntitos
@@ -236,11 +274,21 @@ namespace Tacos
             {
                 int m = i;
                 var c = MissionSpots[i];
-                _nodeGlow.Add(st.Img("Brillo " + i, UiKit.GlowSprite, new Color(1f, 0.85f, 0.4f, 0.9f), Stage.R(c.x, c.y, 150, 150)));
-                var disc = st.Img("Mision " + i, UiKit.CircleSprite, Gold, Stage.R(c.x, c.y, 70, 70));
-                var o = disc.gameObject.AddComponent<Outline>(); o.effectColor = new Color(0.16f, 0.08f, 0.04f); o.effectDistance = new Vector2(4f, -4f);
+                _nodeGlow.Add(st.Img("Brillo " + i, UiKit.GlowSprite, new Color(1f, 0.85f, 0.4f, 0.9f), Stage.R(c.x, c.y, 125, 125)));
+                // Azulejo de talavera (antes un circulo amarillo liso); si falta el dibujo, el circulo de siempre
+                Image disc;
+                if (TacosArt.Get("ui_mision") != null)
+                {
+                    disc = st.Pic("Mision " + i, TacosArt.Get("ui_mision"), Stage.R(c.x, c.y, 74, 74));
+                    disc.preserveAspect = true;
+                }
+                else
+                {
+                    disc = st.Img("Mision " + i, UiKit.CircleSprite, Gold, Stage.R(c.x, c.y, 70, 70));
+                    var o = disc.gameObject.AddComponent<Outline>(); o.effectColor = new Color(0.16f, 0.08f, 0.04f); o.effectDistance = new Vector2(4f, -4f);
+                }
                 _nodeDisc.Add(disc);
-                _nodeNum.Add(st.Label((i + 1).ToString(), 30, UiKit.Ink, Stage.R(c.x, c.y - 1, 70, 70)));
+                _nodeNum.Add(st.Label((i + 1).ToString(), TacosArt.Get("ui_mision") != null ? 24 : 30, UiKit.Ink, Stage.R(c.x, c.y - 1, 70, 70))); // azulejo mas chico: numero mas chico
                 _nodeNum[i].GetComponents<Outline>()[0].enabled = false;
                 _nodeNum[i].GetComponents<Outline>()[1].enabled = false;
                 var stars = new Image[3];
@@ -322,14 +370,14 @@ namespace Tacos
             UiKit.TopLeft(_cardPerk.rectTransform, 350f, 238f, 270f, 50f);
             var how = UiKit.MakeButton(t, "ComoSeJuega", "¿Cómo se juega?", UiKit.Panel2, UiKit.Turq, 18, () =>
             {
-                _data.introsSeen &= ~1; _data.guidedSeen &= ~1; // repite el tutorial de la mision 1
+                _data.intros[G(0)] = false; _data.guided[G(0)] = false; // repite el tutorial de la mision 1 del mundo
                 _mission = 0;
                 StartTurn();
             });
             UiKit.TopLeft((RectTransform)how.transform, 440f, 14f, 180f, 40f);
             // cada puesto con su grito (la calle se arma de nuevo al cambiar de mundo)
             var stall = Missions[0].Stall;
-            string grito = stall == Stall.Garnachas ? "¡A GARNACHEAR!" : stall == Stall.Elotes ? "¡A ELOTEAR!" : "¡A TAQUEAR!";
+            string grito = new[] { "¡A TAQUEAR!", "¡A GARNACHEAR!", "¡A ELOTEAR!", "¡A POZOLEAR!", "¡A TAMALEAR!", "¡A LA FERIA!" }[(int)stall];
             var go = UiKit.MakeButton(t, "ATaquear", grito, UiKit.Chile, Color.white, 30, StartTurn);
             UiKit.TopLeft((RectTransform)go.transform, 350f, 292f, 266f, 70f);
         }
@@ -369,11 +417,17 @@ namespace Tacos
             RefreshZone();
         }
 
+        float _lastMissionTap = -10f;
+
+        /// <summary>Un toque elige la mision; dos toques seguidos en la misma la empiezan.</summary>
         void SelectMission(int m)
         {
             if (!Unlocked(m)) { Audio.PlaySfx(_snd.Error, 0.5f); return; }
+            bool twice = m == _mission && Time.unscaledTime - _lastMissionTap < 0.5f;
+            _lastMissionTap = Time.unscaledTime;
             _mission = m;
             RefreshZone();
+            if (twice) { _lastMissionTap = -10f; StartTurn(); }
         }
 
         void WorldMessage(string text)
@@ -394,6 +448,14 @@ namespace Tacos
                 bool open = ZoneOpen(z);
                 _islands[z].color = open ? Color.white : new Color(0.5f, 0.46f, 0.66f, 1f);
                 _locks[z].enabled = !open && _locks[z].sprite != null;
+                // El puente que llega a este mundo: en sombra mientras no se pueda pasar
+                // (en modo prueba todo esta abierto, asi que todos se ven prendidos)
+                if (z > 0)
+                {
+                    bool canCross = open;
+                    _bridgeOpen[z - 1] = canCross;
+                    _bridges[z - 1].color = canCross ? Color.white : new Color(0.32f, 0.3f, 0.42f, 0.9f);
+                }
                 int done = 0;
                 for (int i = 0; i < PerWorld; i++) { int g = z * PerWorld + i; if (g < P.stars.Length && P.stars[g] > 0) done++; }
                 _zoneInfo[z].text = open ? $"★ {WorldStars(z)}/{PerWorld * 3}   ·   {done} de {PerWorld} misiones"
@@ -410,8 +472,14 @@ namespace Tacos
             for (int i = 0; i < Missions.Length; i++)
             {
                 bool open = Unlocked(i), sel = i == _mission;
-                _nodeDisc[i].color = sel ? UiKit.Turq : open ? Gold : LockedColor;
-                _nodeNum[i].color = open ? UiKit.Ink : new Color(0.7f, 0.66f, 0.78f);
+                if (TacosArt.Get("ui_mision") != null)
+                {
+                    // abierto, ya con estrellas (con su papel picado) o de piedra si esta cerrado; el elegido brilla y tiene al cocinero
+                    _nodeDisc[i].sprite = !open ? TacosArt.Get("ui_mision_cerrada") : P.stars[G(i)] > 0 ? TacosArt.Get("ui_mision_hecha") : TacosArt.Get("ui_mision");
+                    _nodeDisc[i].color = Color.white;
+                }
+                else _nodeDisc[i].color = sel ? UiKit.Turq : open ? Gold : LockedColor;
+                _nodeNum[i].color = open ? UiKit.Ink : TacosArt.Get("ui_mision") != null ? new Color(0.25f, 0.23f, 0.27f) : new Color(0.7f, 0.66f, 0.78f);
                 _nodeGlow[i].enabled = sel;
                 for (int s = 0; s < 3; s++)
                 {
@@ -422,7 +490,10 @@ namespace Tacos
             var c = MissionSpots[_mission];
             _nodeTaquero.sprite = TacosArt.Taquero(_taq.Id, TacosArt.Pose.Festeja);
             _nodeTaquero.enabled = _nodeTaquero.sprite != null;
-            _zoneStage.Place(_nodeTaquero.rectTransform, Stage.R(c.x, c.y - 110, 120, 160));
+            // Parado arriba de su mision; en las de hasta arriba no cabia y desaparecia: ahi se para a un lado
+            float tx = c.x, ty = c.y - 110f;
+            if (ty - 80f < 12f) { ty = Mathf.Max(92f, c.y - 20f); tx = c.x > 1300f ? c.x - 120f : c.x + 120f; }
+            _zoneStage.Place(_nodeTaquero.rectTransform, Stage.R(tx, ty, 120, 160));
 
             var lvl = Missions[_mission];
             _cardName.text = $"{_mission + 1}. {lvl.Name}";
@@ -452,9 +523,50 @@ namespace Tacos
             if (_world.gameObject.activeSelf)
             {
                 _worldStage.Layout();
-                _worldStage.Root.anchoredPosition += new Vector2(-_worldScroll * 0.06f, 0f); // el cielo se mueve poquito
+                // El cielo se mueve poquito al pasar de isla. Con 6 mundos se salia de la imagen (al llegar a la feria
+                // se veia negro a la derecha): ahora se agranda un poco y el recorrido nunca pasa de su orilla.
+                var sky = _worldStage.Root;
+                sky.sizeDelta *= 1.18f;
+                float room = Mathf.Max(0f, sky.sizeDelta.x - ((RectTransform)sky.parent).rect.width);
+                float k = Mathf.Clamp01(_worldScroll / Mathf.Max(1f, (Zones.Length - 1) * ZoneGap));
+                sky.anchoredPosition += new Vector2((0.5f - k) * room, 0f);
             }
             if (_zone.gameObject.activeSelf) _zoneStage.Layout();
+        }
+
+        float IslandBob(int z, float t) => 12f * Mathf.Sin(t * 1.3f + z * 1.7f);
+
+        /// <summary>
+        /// Los puentes cuelgan entre dos islas que flotan: siguen su vaiven, se inclinan hacia la que esta mas abajo
+        /// y se mecen tantito. Los abiertos llevan lucecitas que van y vienen; los cerrados quedan quietos y en sombra.
+        /// </summary>
+        void AnimateBridges(float t)
+        {
+            for (int i = 0; i < _bridges.Count; i++)
+            {
+                float a = IslandBob(i, t), b = IslandBob(i + 1, t);
+                bool open = _bridgeOpen[i];
+                float swing = open ? 5f * Mathf.Sin(t * 2.1f + i) : 1.5f * Mathf.Sin(t * 0.9f + i);
+                float x = i * ZoneGap + ZoneGap / 2f, y = 10f + (a + b) / 2f - Mathf.Abs(swing) * 0.6f;
+                var rt = _bridges[i].rectTransform;
+                rt.anchoredPosition = new Vector2(x, y);
+                rt.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(b - a, ZoneGap - 380f) * Mathf.Rad2Deg + swing * 0.15f);
+                rt.localScale = new Vector3(1f, 1f + 0.03f * Mathf.Sin(t * 2.1f + i), 1f);
+                var lights = _bridgeLights[i];
+                for (int l = 0; l < lights.Length; l++)
+                {
+                    lights[l].enabled = open;
+                    if (!open) continue;
+                    // van de una isla a la otra y regresan, cada una a su ritmo
+                    float k = 0.5f + 0.5f * Mathf.Sin(t * (0.45f + 0.12f * l) + l * 2.1f + i);
+                    float half = (ZoneGap - 420f) / 2f;
+                    float lx = x - half + k * 2f * half;
+                    float ly = y + (b - a) * (k - 0.5f) + 28f - 18f * Mathf.Sin(k * Mathf.PI); // siguen la inclinacion y la panza del puente
+                    lights[l].rectTransform.anchoredPosition = new Vector2(lx, ly);
+                    float pulse = 0.55f + 0.35f * Mathf.Sin(t * 5f + l * 1.3f);
+                    lights[l].color = l == 1 ? new Color(1f, 0.55f, 0.85f, pulse) : new Color(1f, 0.85f, 0.4f, pulse);
+                }
+            }
         }
 
         void AnimateMaps()
@@ -470,9 +582,10 @@ namespace Tacos
                     float dist = Mathf.Abs(z * ZoneGap - _worldScroll) / ZoneGap;
                     float k = Mathf.Lerp(1f, 0.8f, Mathf.Clamp01(dist));
                     _islands[z].rectTransform.localScale = new Vector3(k, k, 1f);
-                    _islands[z].rectTransform.anchoredPosition = new Vector2(z * ZoneGap, 60f + 12f * Mathf.Sin(t * 1.3f + z * 1.7f));
+                    _islands[z].rectTransform.anchoredPosition = new Vector2(z * ZoneGap, 60f + IslandBob(z, t));
                     _dots[z].color = z == _worldIndex ? UiKit.Maiz : new Color(0.55f, 0.5f, 0.65f);
                 }
+                AnimateBridges(t);
                 _tapToEnter.enabled = _worldIndex == 0;
                 var c = _tapToEnter.color; c.a = 0.55f + 0.45f * Mathf.Sin(t * 3f); _tapToEnter.color = c;
                 if (_worldMsgTime > 0f)
