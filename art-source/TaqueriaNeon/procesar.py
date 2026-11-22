@@ -272,7 +272,7 @@ for hoja, ids in [('cocineros_garnachas.png', ['mago', 'chata', 'beto']), ('coci
 # Los fondos de los puestos son los de ia/puestos/cocina_*.png (ya traen las ollas llenas)
 for nm in ['pozole', 'tamales', 'feria']:
     # la feria se volvio a pintar (20 nov.): la maqueta no iba con el estilo de los demas puestos
-    fondo = 'barra_feria_v2.png' if nm == 'feria' else 'cocina_' + nm + '.png'
+    fondo = {'feria': 'barra_feria_v2.png', 'tamales': 'cocina_tamales_v2.png'}.get(nm, 'cocina_' + nm + '.png')  # tamales: verdes y rajas repintados (repinta_vaporera.py)
     Image.open(os.path.join(SRC, 'puestos', fondo)).convert('RGB').save(os.path.join(OUT, 'barra_' + nm + '.jpg'), quality=88)
     Image.open(os.path.join(SRC, 'mapa_' + nm + '.png')).convert('RGB').save(os.path.join(OUT, 'mapa_' + nm + '.jpg'), quality=88)
 sheet('pozole_hoja.png', 'gray', 4, 3, ['ing_pozole_rojo', 'ing_pozole_blanco', 'ing_pozole_verde', 'base_plato_chico',
@@ -288,3 +288,6 @@ for hoja, ids in [('cocineros_pozole.png', ['goyo', 'rosa', 'nacho']), ('cociner
     cells(hoja, 'magenta', 3, 3, [f'{i}_{p}' for i in ids for p in ['quieto', 'cocinando', 'festeja']], 380, 560)
 # Botones de mision de la calle (20 nov.): azulejo de talavera abierto, con papel picado si ya tiene estrellas, y de piedra si esta cerrado
 cells('ui_misiones.png', 'magenta', 3, 1, ['ui_mision', 'ui_mision_hecha', 'ui_mision_cerrada'], 300, 300)
+# Tamales con colores bien distintos (22 nov.): el verde y el de rajas se confundian en el globito.
+# Reemplazan a los de tamales_hoja.png (van despues, con el mismo nombre)
+cells('tamales_colores.png', 'magenta', 4, 1, ['ing_tamal_verde', 'ing_tamal_rojo', 'ing_tamal_rajas', 'ing_tamal_dulce'], 300, 300)

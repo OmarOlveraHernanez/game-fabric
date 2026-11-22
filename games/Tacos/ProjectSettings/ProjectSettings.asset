@@ -371,7 +371,9 @@ PlayerSettings:
       m_Height: 36
       m_Kind: 0
       m_SubKind: 
-    - m_Textures: []
+    - m_Textures:
+      - {fileID: 2800000, guid: d7de1af2cc00f8f4fa3e351afc1cc4be, type: 3}
+      - {fileID: 2800000, guid: 34f11f9b865ee0448aa419be05758238, type: 3}
       m_Width: 432
       m_Height: 432
       m_Kind: 2
@@ -691,7 +693,8 @@ PlayerSettings:
   webGLCloseOnQuit: 0
   webWasm2023: 0
   webEnableSubmoduleStrippingCompatibility: 0
-  scriptingDefineSymbols: {}
+  scriptingDefineSymbols:
+    Android: 
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:

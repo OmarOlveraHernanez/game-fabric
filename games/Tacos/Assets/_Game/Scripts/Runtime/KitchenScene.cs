@@ -487,9 +487,37 @@ namespace Tacos
                     if (_sim.Plates[p].Matches(c.Order)) { _do(Command.SelectPlate(p)); _do(Command.Deliver(slot)); return; }
                 // Casi listo: en vez de darle algo mal (y que se vaya), se dice que le falta
                 string why = WhatsMissing(c.Order);
+                if (why == null)
+                {
+                    // ningun plato con lo mismo: se explica con el que tiene elegido (por ejemplo tamal de rajas en vez de verde)
+                    var sel = _sim.Plates[_sim.SelectedPlate];
+                    if (sel.HasMeat) why = Diff(sel.Base, sel.Meat, sel.Extras, sel.Scoops, c.Order);
+                }
                 if (why != null) { Notice?.Invoke(why); return; }
             }
             _do(Command.Deliver(slot));
+        }
+
+        /// <summary>El cliente cambio su pedido: su globito brinca en naranja unos segundos.</summary>
+        public void FlashOrder(int slot) { if (slot >= 0 && slot < _customers.Length) _customers[slot].ChangedFlash = 3f; }
+
+        /// <summary>Por que un plato no es lo que pidio (null si es otra cosa completamente). Para avisar algo mas que "eso no pedi".</summary>
+        public static string Diff(Base b, Meat m, Extra ex, int scoops, Order o)
+        {
+            if (m == Meat.None) return null;
+            if (m != o.Meat) return $"Pidió {MeatOne(o.Meat)}, no {MeatOne(m)}";
+            if (b != o.Base) return $"Lo quería en {BaseWord(o.Base)}, no en {BaseWord(b)}";
+            if (Math.Max(1, scoops) < Plate.ScoopsFor(o.Base)) return "¡Le faltó otro cucharón!";
+            var falta = new List<string>(); var sobra = new List<string>();
+            foreach (var e in Extras.All)
+            {
+                bool want = (o.Extras & e) != 0, has = (ex & e) != 0;
+                if (want && !has) falta.Add(ExtraLabel(e).ToLower());
+                if (!want && has) sobra.Add(ExtraLabel(e).ToLower());
+            }
+            if (falta.Count > 0) return "Le faltó: " + string.Join(", ", falta);
+            if (sobra.Count > 0) return "No pidió: " + string.Join(", ", sobra);
+            return null;
         }
 
         /// <summary>Avisos para el jugador (los muestra TacosGame como letrerito).</summary>
@@ -515,6 +543,33 @@ namespace Tacos
                 if (sobra.Count > 0) return "No pidió: " + string.Join(", ", sobra);
             }
             return null;
+        }
+
+        /// <summary>Lo principal en singular, para los avisos ("pidio tamal verde, no tamal de rajas").</summary>
+        public static string MeatOne(Meat m)
+        {
+            switch (m)
+            {
+                case Meat.Pastor: return "pastor";
+                case Meat.Asada: return "asada";
+                case Meat.Chorizo: return "chorizo";
+                case Meat.Suadero: return "suadero";
+                case Meat.Chicharron: return "chicharrón";
+                case Meat.Tinga: return "tinga";
+                case Meat.PapaChorizo: return "papa con chorizo";
+                case Meat.Frijoles: return "frijoles";
+                case Meat.Elote: return "elote";
+                case Meat.Esquite: return "esquite";
+                case Meat.EloteAsado: return "elote asado";
+                case Meat.PozoleRojo: return "pozole rojo";
+                case Meat.PozoleBlanco: return "pozole blanco";
+                case Meat.PozoleVerde: return "pozole verde";
+                case Meat.TamalVerde: return "tamal verde";
+                case Meat.TamalRojo: return "tamal rojo";
+                case Meat.TamalRajas: return "tamal de rajas";
+                case Meat.TamalDulce: return "tamal dulce";
+                default: return "otra cosa";
+            }
         }
 
         static string BaseWord(Base b) =>
@@ -959,6 +1014,7 @@ namespace Tacos
         // ---- cliente detras de la barra con su globito ----
         sealed class CustomerView
         {
+            public float ChangedFlash; // segundos que el globito avisa que cambio el pedido
             readonly KitchenScene _k;
             readonly Image _face, _bubble, _tail, _barBg, _bar, _tagBg, _ice;
             public RectTransform Bubble => _bubble.rectTransform;
@@ -966,7 +1022,12 @@ namespace Tacos
             readonly Outline _bubbleOutline;
             readonly Image[] _icons = new Image[7];
             readonly Image[] _iconBg = new Image[7]; // circulito de color: lo blanco (crema, queso) no se perdia en el globito
-            readonly Text _rush, _ready, _tag;
+            readonly Text _rush, _ready, _tag, _baseTag, _meatTag;
+            readonly Image _baseTagBg, _meatTagBg;
+
+            static string BaseCaption(Base b) =>
+                b == Base.Guajolota ? "BOLILLO" : b == Base.Hoja ? "HOJA" : b == Base.PlatoChico ? "CHICO" : b == Base.PlatoGrande ? "GRANDE"
+                : b == Base.Sope ? "SOPE" : b == Base.Gordita ? "GORDITA" : b == Base.Quesadilla ? "QUESADILLA" : null;
             public readonly RectTransform Hot;
             readonly float _x;
 
@@ -990,6 +1051,19 @@ namespace Tacos
                     _iconBg[e] = st.Img("PideFondo " + i + "." + e, UiKit.CircleSprite, new Color(0.86f, 0.62f, 0.38f, 0.55f), R(0, 0, 10, 10));
                     _icons[e] = st.Pic("Pide " + i + "." + e, null, R(0, 0, 10, 10));
                 }
+                // Nombre de la base debajo de su dibujito (el bolillo chiquito se confundia con un tamal)
+                _baseTagBg = st.Img("BaseNombre " + i, UiKit.RoundedSpritePublic, new Color(0.45f, 0.12f, 0.42f, 0.95f), R(0, 0, 10, 10));
+                _baseTagBg.type = Image.Type.Sliced;
+                _baseTagBg.raycastTarget = false;
+                _baseTag = UiKit.FillLabel(_baseTagBg.transform, "", 13, Color.white, TextAnchor.MiddleCenter, 1f);
+                _baseTag.raycastTarget = false;
+                _baseTagBg.enabled = _baseTag.enabled = false;
+                _meatTagBg = st.Img("SaborNombre " + i, UiKit.RoundedSpritePublic, new Color(0.1f, 0.42f, 0.3f, 0.95f), R(0, 0, 10, 10));
+                _meatTagBg.type = Image.Type.Sliced;
+                _meatTagBg.raycastTarget = false;
+                _meatTag = UiKit.FillLabel(_meatTagBg.transform, "", 13, Color.white, TextAnchor.MiddleCenter, 1f);
+                _meatTag.raycastTarget = false;
+                _meatTagBg.enabled = _meatTag.enabled = false;
 
                 _barBg = st.Img("Paciencia " + i, UiKit.RoundedSpritePublic, new Color(0.08f, 0.07f, 0.12f, 0.8f), R(_x, 220, 100, 14));
                 _barBg.type = Image.Type.Sliced;
@@ -1022,7 +1096,7 @@ namespace Tacos
                 _ready.enabled = false; // ahora el globito verde que late avisa que ya esta listo
                 bool special = on && c.Kind != CustomerKind.Normal;
                 _tagBg.enabled = _tag.enabled = special;
-                if (!on) { foreach (var ic in _icons) ic.enabled = false; foreach (var b in _iconBg) b.enabled = false; return; }
+                if (!on) { foreach (var ic in _icons) ic.enabled = false; foreach (var b in _iconBg) b.enabled = false; _baseTagBg.enabled = _baseTag.enabled = false; _meatTagBg.enabled = _meatTag.enabled = false; return; }
 
                 bool boss = c.Kind == CustomerKind.Jefe;
                 var face = boss ? TacosArt.Boss(L.Stall, c.PatienceRatio) : TacosArt.Customer(c.Id, c.PatienceRatio);
@@ -1047,7 +1121,8 @@ namespace Tacos
                 int n = 0;
                 // en las garnachas importa la masa; en el pozole el tamaño; en los tamales hoja o bolillo (en la feria sale sola)
                 bool autoBase = _k._sim != null && _k._sim.Level.StallDef.AutoBase;
-                if (!autoBase && c.Order.Base != Base.Tortilla && TacosArt.Base(c.Order.Base, true) != null) SetIcon(n++, TacosArt.Base(c.Order.Base, true));
+                bool baseShown = !autoBase && c.Order.Base != Base.Tortilla && TacosArt.Base(c.Order.Base, true) != null;
+                if (baseShown) SetIcon(n++, TacosArt.Base(c.Order.Base, true));
                 SetIcon(n++, TacosArt.Meat(c.Order.Meat));
                 foreach (var e in Extras.All) if (Extras.Has(c.Order.Extras, e) && n < _icons.Length) SetIcon(n++, TacosArt.Extra(e));
                 for (int k = n; k < _icons.Length; k++) _icons[k].enabled = false;
@@ -1069,13 +1144,40 @@ namespace Tacos
                 }
                 // Plato chico de pozole: el dibujito chico, para que se distinga del grande
                 if (!autoBase && c.Order.Base == Base.PlatoChico && n > 0) _icons[0].rectTransform.localScale = new Vector3(0.7f, 0.7f, 1f);
+                // y su nombre en una etiqueta abajo del primer dibujito
+                string cap = null; // (sin letras abajo: el usuario prefiere que se distinga solo por el dibujo)
+                // (el sabor ya no lleva nombre: el usuario prefirio que se distinga por el color del tamal)
+                string meatCap = null;
+                _meatTagBg.enabled = _meatTag.enabled = meatCap != null;
+                if (meatCap != null)
+                {
+                    _meatTag.text = meatCap;
+                    int mk = baseShown ? 1 : 0;
+                    float mx = left + Pad + Step / 2f + (mk % 3) * Step, my = Top + Pad + Step / 2f + (mk / 3) * Step;
+                    st.Place(_meatTagBg.rectTransform, R(mx, my + 19f, 50f, 15f));
+                }
+                _baseTagBg.enabled = _baseTag.enabled = cap != null;
+                if (cap != null)
+                {
+                    _baseTag.text = cap;
+                    float ix0 = left + Pad + Step / 2f, iy0 = Top + Pad + Step / 2f;
+                    st.Place(_baseTagBg.rectTransform, R(ix0, iy0 + 19f, cap.Length > 7 ? 62f : 50f, 15f));
+                }
                 st.Place(_tail.rectTransform, R(left + 6f, Top + bh - 8f, 22, 22));
                 _bubbleOutline.effectColor = ready ? UiKit.Limon : frozen ? new Color(0.55f, 0.85f, 1f) : new Color(0.16f, 0.12f, 0.2f, 1f);
 
                 // Listo para entregar: el globito se pone verde y late (sin texto encima de nadie)
                 float beat = ready ? 1f + 0.05f * Mathf.Sin(Time.unscaledTime * 8f) : 1f;
-                _bubble.rectTransform.localScale = new Vector3(beat, beat, 1f);
                 _bubble.color = ready ? new Color(0.9f, 1f, 0.84f, 0.98f) : new Color(1f, 0.98f, 0.94f, 0.97f);
+                // Cambio su pedido (Borrachito): el globito se pone naranja y brinca un rato, para que se note
+                if (ChangedFlash > 0f)
+                {
+                    ChangedFlash -= Time.unscaledDeltaTime;
+                    beat = 1f + 0.12f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 10f));
+                    _bubble.color = new Color(1f, 0.78f, 0.45f, 0.98f);
+                    _bubbleOutline.effectColor = new Color(1f, 0.45f, 0.1f);
+                }
+                _bubble.rectTransform.localScale = new Vector3(beat, beat, 1f);
 
                 st.Place(_barBg.rectTransform, R(bx, Top + bh + 12f, bw, 14));
                 float r = c.PatienceRatio;

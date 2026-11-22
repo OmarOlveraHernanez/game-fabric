@@ -11,7 +11,7 @@ JUEGO = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'ga
 
 # (fondo, nombre de salida, trazos (x0, y0, x1, y1, grueso) y poligonos), en pixeles de la imagen de 1536 x 864
 PIEZAS = {
-    'tamales': ('cocina_tamales.png', 'frente_tamales', [
+    'tamales': ('cocina_tamales_v2.png', 'frente_tamales', [
         (819, 259, 776, 336, 10),   # cucharon del champurrado
         (1016, 268, 978, 336, 10),  # cucharon del atole de arroz
         (1205, 279, 1168, 336, 10), # cucharon del atole de fresa

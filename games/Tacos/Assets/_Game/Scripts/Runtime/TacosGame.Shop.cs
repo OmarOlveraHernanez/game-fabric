@@ -83,6 +83,7 @@ namespace Tacos
             // Encabezado (igual que en la calle)
             var back = UiKit.MakeButton(_shop, "VolverTienda", "‹ Calle", new Color(0.08f, 0.07f, 0.12f, 0.88f), UiKit.Cream, 26, ShowZone);
             Corner((RectTransform)back.transform, new Vector2(0f, 1f), new Vector2(18f, -16f), new Vector2(170f, 62f));
+            _removeAdsShop = BuildRemoveAdsButton(_shop, new Vector2(0f, 0f), new Vector2(18f, 18f)); // encima de todo
             var title = UiKit.Panel(_shop, "TituloTienda", new Color(0.08f, 0.07f, 0.12f, 0.88f), true, false);
             Corner(title.rectTransform, new Vector2(0f, 1f), new Vector2(200f, -16f), new Vector2(430f, 62f));
             _shopTitle = UiKit.FillLabel(title.transform, "Jarcería · Mejoras de cocina", 26, UiKit.Maiz, TextAnchor.MiddleCenter, 4f);

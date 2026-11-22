@@ -1,4 +1,4 @@
-# Taquería Neón (carpeta `games/Tacos`)
+# Antojitos Neón (antes Taquería Neón; carpeta `games/Tacos`)
 
 Juego de cocina en una taquería callejera: llegan clientes con su pedido, pones la carne en la plancha, armas el taco con sus extras y lo entregas antes de que se canse el cliente. Estaciones fijas (se tocan, no se camina). Primero campaña offline y después cooperativo en línea. Diseño completo en `GDD.md`.
 
@@ -17,7 +17,7 @@ Juego de cocina en una taquería callejera: llegan clientes con su pedido, pones
 - Al cambiar tiempos o turnos, correr las pruebas antes de probar en la tablet.
 
 ## Convenciones
-- Identidad en `factory.json`. El appId `com.ollinixgames.tacos` y el nombre son **provisionales hasta publicar**.
+- Identidad en `factory.json`: **Antojitos Neón**, appId `com.ollinixgames.antojitosneon` (nombre elegido por el usuario el 21 de noviembre de 2026, antes de publicar). La carpeta, el código (`Tacos`) y `art-source/TaqueriaNeon` conservan el nombre viejo.
 - Input System (nuevo). Render: URP 2D. 60 fps. Horizontal.
 - Comandos: `tools\test.ps1 -Game Tacos`, `tools\build.ps1 -Game Tacos`, `tools\install-apk.ps1 -Game Tacos`.
 
