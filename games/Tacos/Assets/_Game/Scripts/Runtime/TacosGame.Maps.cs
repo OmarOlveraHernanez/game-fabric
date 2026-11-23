@@ -195,13 +195,14 @@ namespace Tacos
             Corner(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -10f), new Vector2(420f, 200f));
             if (title.sprite == null)
             {
-                var t = UiKit.Outlined(_world, "TAQUERÍA NEÓN", 56, UiKit.Maiz);
+                var t = UiKit.Outlined(_world, "ANTOJITOS NEÓN", 56, UiKit.Maiz);
                 t.font = UiKit.Display;
                 Corner(t.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -20f), new Vector2(800f, 80f));
             }
             BuildWallet(_world, out _worldStars, out _worldWallet);
             var snd = UiKit.MakeButton(_world, "Sonido", "", new Color(0.08f, 0.07f, 0.12f, 0.86f), UiKit.Cream, 24, ToggleSound);
             Corner((RectTransform)snd.transform, new Vector2(0f, 1f), new Vector2(18f, -16f), new Vector2(200f, 62f));
+            _removeAdsWorld = BuildRemoveAdsButton(_world, new Vector2(0f, 1f), new Vector2(18f, -90f));
             _worldSound = snd.GetComponentInChildren<Text>();
 
             var msg = UiKit.Panel(_world, "Mensaje", new Color(UiKit.Ink.r, UiKit.Ink.g, UiKit.Ink.b, 0.94f), true, false);
@@ -380,6 +381,7 @@ namespace Tacos
             string grito = new[] { "¡A TAQUEAR!", "¡A GARNACHEAR!", "¡A ELOTEAR!", "¡A POZOLEAR!", "¡A TAMALEAR!", "¡A LA FERIA!" }[(int)stall];
             var go = UiKit.MakeButton(t, "ATaquear", grito, UiKit.Chile, Color.white, 30, StartTurn);
             UiKit.TopLeft((RectTransform)go.transform, 350f, 292f, 266f, 70f);
+            BuildPowerUpOffer();
         }
 
         // =============== mostrar ===============

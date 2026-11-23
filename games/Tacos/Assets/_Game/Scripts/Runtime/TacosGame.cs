@@ -104,6 +104,7 @@ namespace Tacos
             BuildShop();
             BuildEnd();
             ShowWorld();
+            InitMonetization();
         }
 
         /// <summary>La primera mision abierta que todavia no tiene 3 estrellas (para empezar ahi).</summary>
@@ -253,7 +254,13 @@ namespace Tacos
                 PulseCoins();
                 _scene.MessNapkin();
             };
-            _sim.OrderWrong += slot => { Toast("¡Eso no pedí!", UiKit.Chile); Audio.PlaySfx(_snd.Error); _scene.Shake(); _scene.MessSpill(); };
+            _sim.OrderWrong += slot =>
+            {
+                // Decir QUE estuvo mal (antes solo "¡Eso no pedí!" y no se sabia por que)
+                string why = _lastDeliver;
+                Toast(why != null ? "¡Eso no pedí! " + why : "¡Eso no pedí!", UiKit.Chile);
+                Audio.PlaySfx(_snd.Error); _scene.Shake(); _scene.MessSpill();
+            };
             _sim.CustomerLeft += slot => { Toast("Un cliente se cansó de esperar", UiKit.Chile); Audio.PlaySfx(_snd.Error, 0.7f); _scene.Shake(); };
             _sim.CustomerArrived += slot => Audio.PlaySfx(_snd.Cliente, 0.6f);
             _sim.BossArrived += slot =>
@@ -272,7 +279,13 @@ namespace Tacos
             };
             _sim.ItemBurned += () => { Toast(_sim.Level.Stall == Stall.Taqueria ? "¡Se quemó una tortilla!" : "¡Se quemó una masa!", UiKit.Chile); Audio.PlaySfx(_snd.Quemado); };
             _sim.PotRefilled += m => Audio.PlaySfx(_snd.Listo, 0.6f);
-            _sim.OrderChanged += slot => { _scene.Popup("¡Siempre no, mejor otro!", _scene.CustomerPoint(slot), new Color32(0xFF, 0xB0, 0x5A, 0xFF), 26); Audio.PlaySfx(_snd.Cliente, 0.8f); };
+            _sim.OrderChanged += slot =>
+            {
+                _scene.Popup("¡Siempre no, mejor otro!", _scene.CustomerPoint(slot), new Color32(0xFF, 0xB0, 0x5A, 0xFF), 26);
+                _scene.FlashOrder(slot); // su globito brinca en naranja: que se note que cambio
+                Toast("¡El Borrachito cambió su pedido! Mira su globito", new Color32(0xFF, 0xB0, 0x5A, 0xFF));
+                Audio.PlaySfx(_snd.Cliente, 0.8f);
+            };
             _sim.StreakBroken += n => _scene.Popup($"Se rompió la racha de {n}", new Vector2(768, 300), UiKit.Chile, 28);
             _sim.PickupSpawned += p => Audio.PlaySfx(_snd.PowerUpCae, 0.8f);
             _sim.PowerUpGained += OnPowerUpGained;
@@ -291,6 +304,7 @@ namespace Tacos
                 () => { _data.guided[m] = true; _saveFile.Save(_data); });
             if (_tutorial.ShowingIntro) _paused = true;
             Audio.PlayMusic(_snd.MusicGame);
+            GiveBonusPowerUp();
             Refresh();
         }
 
@@ -299,6 +313,8 @@ namespace Tacos
             _tutorial.End();
             int stars = _sim.Stars;
             P.Record(G(_mission), stars, _sim.Coins);
+            _data.missionsSinceAd++;
+            _doubled = false;
             _saveFile.Save(_data);
             Audio.PlaySfx(_snd.Fin);
             var st = _sim.Level.Stars;
@@ -315,9 +331,21 @@ namespace Tacos
             _end.gameObject.SetActive(true);
         }
 
+        // Por que el ultimo plato entregado no era lo que pedia (se calcula antes de entregar: despues ya no esta)
+        string _lastDeliver;
+
         void Do(Command cmd)
         {
             if (_sim == null || _sim.IsFinished || _paused) return;
+            _lastDeliver = null;
+            if (cmd.Type == CommandType.Deliver && cmd.Arg < _sim.Customers.Length && _sim.Customers[cmd.Arg] != null)
+            {
+                var pl = _sim.Plates[_sim.SelectedPlate];
+                var o = _sim.Customers[cmd.Arg].Order;
+                _lastDeliver = KitchenScene.Diff(pl.Base, pl.Meat, pl.Extras, pl.Scoops, o);
+                if (_sim.Customers[cmd.Arg].Changed && !pl.Matches(o))
+                    _lastDeliver = _lastDeliver == null ? "Cambió su pedido, mira su globito" : "Cambió su pedido. " + _lastDeliver;
+            }
             var r = _sim.Apply(cmd);
             if (r == CommandResult.Ok) { ActionFeedback(cmd); _scene.Mess(cmd); }
             string msg = Message(r);
@@ -397,6 +425,7 @@ namespace Tacos
                 else if (_zone.gameObject.activeSelf) ShowWorld();
             }
             AnimateMaps();
+            UpdateAdsUi();
             if (_shop.gameObject.activeSelf) UpdateShop();
             if (_end.gameObject.activeSelf) UpdateResults();
             if (_sim == null) return;

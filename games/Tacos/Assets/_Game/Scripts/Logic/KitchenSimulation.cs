@@ -557,6 +557,9 @@ namespace Tacos.Logic
             if (c.Kind == CustomerKind.Jefe && last) BossServed?.Invoke();
         }
 
+        /// <summary>Power-up de regalo al empezar (el jugador vio un video con premio).</summary>
+        public void GiftPowerUp(PowerUp p) => Grant(p, false);
+
         void Grant(PowerUp p, bool fromPickup)
         {
             _stock[(int)p] = Math.Min(Rules.MaxPowerUpStock, _stock[(int)p] + 1);

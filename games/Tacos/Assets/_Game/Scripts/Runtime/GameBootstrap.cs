@@ -33,6 +33,8 @@ namespace Tacos
         public int guidedSeen;
         public bool[] intros = new bool[0]; // por mision: el Tio ya explico lo nuevo
         public bool[] guided = new bool[0]; // por mision: ya se hizo el tutorial con la manita
+        public bool noAds;                  // compro "Quitar anuncios" (la tienda de Google lo confirma al abrir)
+        public int missionsSinceAd;         // misiones desde el ultimo anuncio entre misiones
 
         /// <summary>Ajusta las listas al numero de misiones y, si es un guardado viejo, pasa los bits.</summary>
         public void FitTutorials(int missions)

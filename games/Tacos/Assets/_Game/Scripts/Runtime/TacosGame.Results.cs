@@ -57,6 +57,7 @@ namespace Tacos
 
             _endInfo = st.Label("", 22, new Color32(0xFF, 0xF0, 0xD2, 0xFF), Stage.R(860, 600, 700, 74));
             FitText(_endInfo, 22);
+            BuildDoubleCoins(st);
 
             EndButton(st, "btn_rojo", "‹ Calle", 560, 230, ShowZone);
             EndButton(st, "btn_madera", "Repetir", 830, 260, StartTurn);
@@ -87,7 +88,8 @@ namespace Tacos
             var label = st.Label(text, 34, Color.white, Stage.R(x, 756, w - 40, 60), group);
             label.font = UiKit.Display;
             FitText(label, 34);
-            st.Hotspot("Tocar", Stage.R(x, 760, w, 96), () => { UiKit.Clicked?.Invoke(); onTap(); }, group);
+            // al salir de resultados puede tocar un anuncio entre misiones (cada 3, y nunca con "Quitar anuncios")
+            st.Hotspot("Tocar", Stage.R(x, 760, w, 96), () => { UiKit.Clicked?.Invoke(); AfterResults(onTap); }, group);
             return group;
         }
 
